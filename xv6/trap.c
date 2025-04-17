@@ -56,6 +56,15 @@ trap(struct trapframe *tf)
       release(&tickslock);
     }
     lapiceoi();
+    // 추가한 코드
+    struct proc* p;
+    char* sp;
+    p = myproc();
+    sp = p->kstack + KSTACKSIZE;
+    sp -= 4;
+    *(unsigned int*)sp = (unsigned int)(void*)p->scheduler;
+    sp -= 32;
+
     break;
   case T_IRQ0 + IRQ_IDE:
     ideintr();
