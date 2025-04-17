@@ -23,7 +23,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-int uthread_init(void (*scheduler)(void));
+int uthread_init(int address);
 
 // ulib.c
 int stat(char*, struct stat*);
