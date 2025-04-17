@@ -87,10 +87,7 @@ LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
 #CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror -fno-omit-frame-pointer
-CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing \
-         -fvar-tracking -fvar-tracking-assignments -O0 -g -Wall -MD \
-         -gdwarf-2 -m32 -Werror -fno-omit-frame-pointer \
-         -mno-sse -mno-sse2 -mno-mmx -msoft-float
+CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -fvar-tracking -fvar-tracking-assignments -O0 -g -Wall -MD -gdwarf-2 -m32 -Werror -fno-omit-frame-pointer
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 GCCVER = $(shell expr `gcc -dumpversion | cut -f1 -d.` \>= 12)
 ifeq "$(GCCVER)" "1"
@@ -166,6 +163,10 @@ _forktest: forktest.o $(ULIB)
 	# in order to be able to max out the proc table.
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _forktest forktest.o ulib.o usys.o
 	$(OBJDUMP) -S _forktest > forktest.asm
+_uthread1: uthread1.o uthread_switch.o
+	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _uthread1 uthread1.o uthread_switch.o $(ULIB)
+	$(OBJDUMP) -S _uthread1 > uthread1.asm
+
 
 mkfs: mkfs.c fs.h
 	gcc -Werror -Wall -o mkfs mkfs.c
@@ -193,6 +194,8 @@ UPROGS=\
 	_wc\
 	_zombie\
 	_hello\
+	_hello2\
+	_uthread1
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

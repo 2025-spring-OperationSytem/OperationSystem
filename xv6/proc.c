@@ -357,10 +357,16 @@ scheduler(void)
       c->proc = 0;
     }
     release(&ptable.lock);
-
   }
 }
 
+int
+uthread_init(void (*address)(void))
+{
+    struct proc* p = myproc();
+    p->scheduler = address;
+    return 0;
+}
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
 // intena because intena is a property of this
