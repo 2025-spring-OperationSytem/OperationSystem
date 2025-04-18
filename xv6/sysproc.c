@@ -25,6 +25,14 @@ sys_wait(void)
 {
   return wait();
 }
+int
+sys_uthread_init(void)
+{
+    int address;
+    if (argint(0, &address) < 0)
+        return -1;
+    return uthread_init(address);
+}
 
 int
 sys_kill(void)
@@ -89,3 +97,4 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+

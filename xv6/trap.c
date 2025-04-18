@@ -56,6 +56,17 @@ trap(struct trapframe *tf)
       release(&tickslock);
     }
     lapiceoi();
+
+    // 여기서부터 코드 시작
+
+    struct proc* p = myproc();
+//    if(p != 0){cprintf("p: %d",p);}
+    
+    if ((tf->cs&3) == 0 && p != 0 && p->scheduler != 0 && ticks % 20 == 0) {
+      cprintf("trap in");
+      p->tf->eip = (uint)p->scheduler;
+    }
+
     break;
   case T_IRQ0 + IRQ_IDE:
     ideintr();
