@@ -23,6 +23,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+// uthread.c에서 호출하는 함수
 int uthread_init(int address);
 
 // ulib.c

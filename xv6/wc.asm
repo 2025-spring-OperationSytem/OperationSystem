@@ -709,6 +709,7 @@ SYSCALL(uptime)
  4df:	c3                   	ret
 
 000004e0 <uthread_init>:
+
 SYSCALL(uthread_init)
  4e0:	b8 16 00 00 00       	mov    $0x16,%eax
  4e5:	cd 40                	int    $0x40

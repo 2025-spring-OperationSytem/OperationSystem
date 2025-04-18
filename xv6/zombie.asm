@@ -545,6 +545,7 @@ SYSCALL(uptime)
  34a:	c3                   	ret
 
 0000034b <uthread_init>:
+
 SYSCALL(uthread_init)
  34b:	b8 16 00 00 00       	mov    $0x16,%eax
  350:	cd 40                	int    $0x40

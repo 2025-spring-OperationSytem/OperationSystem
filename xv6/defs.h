@@ -120,6 +120,8 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+// 전역함수로 선언
+int				uthread_init(int address);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -186,8 +188,6 @@ void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
 
-// uthread1.c
-int				uthread_init(int address);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

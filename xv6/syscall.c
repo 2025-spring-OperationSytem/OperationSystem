@@ -103,7 +103,9 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
+// sysproc.c에 선언되어있는 함수 호출
 extern int sys_uthread_init(void);
+// 아래에서 system call로 호출하는 함수들을 선언한다.
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,

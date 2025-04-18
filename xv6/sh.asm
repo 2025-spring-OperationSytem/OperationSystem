@@ -2073,6 +2073,7 @@ SYSCALL(uptime)
      fe9:	c3                   	ret
 
 00000fea <uthread_init>:
+
 SYSCALL(uthread_init)
      fea:	b8 16 00 00 00       	mov    $0x16,%eax
      fef:	cd 40                	int    $0x40

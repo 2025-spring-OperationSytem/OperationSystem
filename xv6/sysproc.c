@@ -28,9 +28,11 @@ sys_wait(void)
 int
 sys_uthread_init(void)
 {
+    // 시스템콜의 인자값을 받아온다.
     int address;
     if (argint(0, &address) < 0)
         return -1;
+    // proc.c의 uthread_init() 함수 호출
     return uthread_init(address);
 }
 

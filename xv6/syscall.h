@@ -20,4 +20,6 @@
 #define SYS_link   19
 #define SYS_mkdir  20
 #define SYS_close  21
+
+// uthread.c에서 호출하는 시스템콜
 #define SYS_uthread_init 22

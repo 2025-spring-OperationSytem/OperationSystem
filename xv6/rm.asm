@@ -590,6 +590,7 @@ SYSCALL(uptime)
  3ae:	c3                   	ret
 
 000003af <uthread_init>:
+
 SYSCALL(uthread_init)
  3af:	b8 16 00 00 00       	mov    $0x16,%eax
  3b4:	cd 40                	int    $0x40

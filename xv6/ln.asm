@@ -576,6 +576,7 @@ SYSCALL(uptime)
  392:	c3                   	ret
 
 00000393 <uthread_init>:
+
 SYSCALL(uthread_init)
  393:	b8 16 00 00 00       	mov    $0x16,%eax
  398:	cd 40                	int    $0x40

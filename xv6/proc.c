@@ -359,7 +359,9 @@ scheduler(void)
     release(&ptable.lock);
   }
 }
-
+// uthread_init: 유저 레벨 쓰레드의 스케줄러의 주소를 커널의 proccess에 넘겨준다.
+// 이 함수를 시스템콜에서 호출하여 uthread의 스케줄러의 주소를 가져오고 
+// 커널에서 인터럽트가 발생할 때 uthread의 스케줄러를 실행할 수 있게 된다.
 int 
 uthread_init(int address)
 {
