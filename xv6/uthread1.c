@@ -8,7 +8,7 @@
 #define RUNNABLE    0x2
 
 #define STACK_SIZE  8192
-#define MAX_THREAD  4
+#define MAX_THREAD  10
 
 typedef struct thread thread_t, *thread_p;
 typedef struct mutex mutex_t, *mutex_p;
@@ -109,8 +109,9 @@ int
 main(int argc, char *argv[]) 
 {
   thread_init();
-  thread_create(mythread);
-  thread_create(mythread);
+  for (int i = 0; i < MAX_THREAD; i++) {
+    thread_create(mythread);
+  }
   thread_schedule();
   return 0;
 }
