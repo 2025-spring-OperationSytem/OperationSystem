@@ -85,6 +85,7 @@ thread_schedule(void)
   95:	72 b5                	jb     4c <thread_schedule+0x19>
     }
   }
+  
   // printf(1,"next_thread %x ,state %x \n",next_thread, next_thread->state);
   if (t >= all_thread + MAX_THREAD && current_thread->state == RUNNABLE) {
   97:	b8 10 4b 01 00       	mov    $0x14b10,%eax

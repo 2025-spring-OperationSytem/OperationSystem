@@ -55,6 +55,7 @@ thread_schedule(void)
       break;
     }
   }
+  
   // printf(1,"next_thread %x ,state %x \n",next_thread, next_thread->state);
   if (t >= all_thread + MAX_THREAD && current_thread->state == RUNNABLE) {
     /* The current thread is the only runnable thread; run it. */
