@@ -360,12 +360,14 @@ scheduler(void)
   }
 }
 
-int
-uthread_init(void (*address)(void))
+int 
+uthread_init(int address)
 {
-    struct proc* p = myproc();
-    p->scheduler = address;
-    return 0;
+  struct proc *curproc = myproc();
+//  p->trapflag = 1;
+  curproc->scheduler = (uint)address;
+  //cprintf("address: %d", address);
+  return 0;
 }
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores

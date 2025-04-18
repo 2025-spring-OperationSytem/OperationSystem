@@ -13,6 +13,7 @@
 typedef struct thread thread_t, *thread_p;
 typedef struct mutex mutex_t, *mutex_p;
 
+
 struct thread {
   int        sp;                /* saved stack pointer */
   char stack[STACK_SIZE];       /* the thread's stack */
@@ -23,20 +24,38 @@ thread_p  current_thread;
 thread_p  next_thread;
 extern void thread_switch(void);
 
-static void 
-thread_schedule(void)
-{
-  thread_p t;
+static void thread_schedule(void);
 
+void 
+thread_init(void)
+{
+  // main() is thread 0, which will make the first invocation to
+  // thread_schedule().  it needs a stack so that the first thread_switch() can
+  // save thread 0's state.  thread_schedule() won't run the main thread ever
+  // again, because its state is set to RUNNING, and thread_schedule() selects
+  // a RUNNABLE thread.
+  current_thread = &all_thread[0];
+  current_thread->state = RUNNING;
+  uthread_init((int)thread_schedule);
+}
+
+static void
+thread_schedule(void)
+{ 
+  thread_p t;
   /* Find another runnable thread. */
   next_thread = 0;
   for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
+    //printf(1,"t: %x, state %x \n", t, t->state);
+    if(t == &all_thread[0] && t->state == RUNNABLE){
+      continue;
+    }
     if (t->state == RUNNABLE && t != current_thread) {
       next_thread = t;
       break;
     }
   }
-
+  // printf(1,"next_thread %x ,state %x \n",next_thread, next_thread->state);
   if (t >= all_thread + MAX_THREAD && current_thread->state == RUNNABLE) {
     /* The current thread is the only runnable thread; run it. */
     next_thread = current_thread;
@@ -49,34 +68,22 @@ thread_schedule(void)
 
   if (current_thread != next_thread) {         /* switch threads?  */
     next_thread->state = RUNNING;
-    current_thread->state = RUNNABLE;
+    if (current_thread->state != FREE) current_thread->state = RUNNABLE;
     thread_switch();
   } else
     next_thread = 0;
 }
 
 void 
-thread_init(void)
-{
-  uthread_init(thread_schedule);
-
-  // main() is thread 0, which will make the first invocation to
-  // thread_schedule().  it needs a stack so that the first thread_switch() can
-  // save thread 0's state.  thread_schedule() won't run the main thread ever
-  // again, because its state is set to RUNNING, and thread_schedule() selects
-  // a RUNNABLE thread.
-  current_thread = &all_thread[0];
-  current_thread->state = RUNNING;
-}
-
-void 
 thread_create(void (*func)())
 {
+  printf(1,"thread_create\n");
   thread_p t;
 
   for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
     if (t->state == FREE) break;
   }
+  // 스택 포인터 = 스택의 top f rame
   t->sp = (int) (t->stack + STACK_SIZE);   // set sp to the top of the stack
   t->sp -= 4;                              // space for return address
   * (int *) (t->sp) = (int)func;           // push return address on stack
@@ -89,11 +96,12 @@ mythread(void)
 {
   int i;
   printf(1, "my thread running\n");
-  for (i = 0; i < 100; i++) {
+  for (i = 0; i < 10; i++) {
     printf(1, "my thread 0x%x\n", (int) current_thread);
   }
   printf(1, "my thread: exit\n");
   current_thread->state = FREE;
+  thread_schedule();
 }
 
 
