@@ -56,7 +56,8 @@ thread_schedule(void)
 
   if (current_thread != next_thread) {         /* switch threads?  */
     next_thread->state = RUNNING;
-    current_thread->state = RUNNABLE;
+    if (current_thread->state != FREE)
+      current_thread->state = RUNNABLE;
     thread_switch();
   } else
     next_thread = 0;
@@ -84,9 +85,8 @@ void
 thread_create(void (*func)())
 {
   printf(1,"thread_create\n");
-  printf(1, "[create] func address = 0x%x\n", func);
+  
   thread_p t;
-
   for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
     if (t->state == FREE) break;
   }
@@ -100,12 +100,20 @@ thread_create(void (*func)())
   t->tid = t - all_thread;
   t->ptid = current_thread->tid;
   t->state = RUNNABLE;
+
+  printf(1, "[create] tid=%d func address = 0x%x\n", t->tid, func);
 }
 
 static void thread_join_all(void) {
+  printf(1, "[thread_join_all] tid=%d waiting for children\n", current_thread->tid);
+  
+  // 현재 스레드가 대기 상태로 전환
+  current_thread->state = WAIT;
+  
   while (1) {
     int child_alive = 0;
 
+    // 자식 스레드 확인
     for (int i = 0; i < MAX_THREAD; i++) {
       if (all_thread[i].state != FREE &&
           all_thread[i].ptid == current_thread->tid) {
@@ -114,10 +122,13 @@ static void thread_join_all(void) {
       }
     }
 
-    if (!child_alive)
+    // 모든 자식 스레드가 종료되면 대기 종료
+    if (!child_alive) {
+      current_thread->state = RUNNABLE;  // 대기 상태에서 실행 가능 상태로 변경
       break;
+    }
 
-    // 현재 RUNNABLE 스레드가 있는 경우에만 스케줄
+    // 실행 가능한 스레드 확인
     int has_runnable = 0;
     for (int i = 0; i < MAX_THREAD; i++) {
       if (all_thread[i].state == RUNNABLE) {
@@ -126,13 +137,18 @@ static void thread_join_all(void) {
       }
     }
 
+    // 실행 가능한 스레드가 없으면 종료
     if (!has_runnable) {
       printf(1, "[join_all] No runnable threads left, exiting loop early\n");
+      current_thread->state = RUNNABLE;  // 대기 상태에서 실행 가능 상태로 변경
       break;
     }
 
+    // 다른 스레드로 전환
     thread_schedule();
   }
+  
+  printf(1, "[thread_join_all] tid=%d all children finished\n", current_thread->tid);
 }
 
 static void 
@@ -143,8 +159,10 @@ child_thread(void)
   for (i = 0; i < 10; i++) {
     printf(1, "[child] child thread 0x%x\n", (int) current_thread);
   }
-  printf(1, "[child] child thread: exit\n");
   current_thread->state = FREE;
+  printf(1, "[child] tid=%d marking self FREE\n", current_thread->tid);
+  thread_schedule(); 
+  printf(1, "[child] child thread: exit\n");
 }
 
 static void 
@@ -154,7 +172,6 @@ mythread(void)
   printf(1, "[parent] mythread tid=%d creating children...\n", current_thread->tid);
   for (i = 0; i < 5; i++) {
     thread_create(child_thread);
-    thread_schedule();
   }
   thread_join_all();
   printf(1, "[parent] mythread done\n");
@@ -169,6 +186,5 @@ main(int argc, char *argv[])
   thread_init();
   thread_create(mythread);
   thread_schedule();
-  //thread_join_all();
   return 0;
 }
