@@ -33,7 +33,7 @@ thread_schedule(void)
 
   /* Find another runnable thread. */
   next_thread = 0;
-  for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
+  for (t = all_thread+1; t < all_thread + MAX_THREAD; t++) {
     if (t->state == RUNNABLE && t != current_thread) {
       next_thread = t;
       break;
@@ -84,7 +84,7 @@ thread_create(void (*func)())
   printf(1,"thread_create\n");
   
   thread_p t;
-  for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
+  for (t = all_thread +1 ; t < all_thread + MAX_THREAD; t++) {
     if (t->state == FREE) break;
   }
 
@@ -197,7 +197,7 @@ main(int argc, char *argv[])
   thread_init();
   thread_create(mythread);
   // main thread는 아무 역할이 없으므로 바로 FREE로 설정
-  current_thread->state = FREE;
+  //current_thread->state = FREE;
   thread_schedule(); 
   return 0;
 }
