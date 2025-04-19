@@ -18,8 +18,6 @@
 typedef struct thread thread_t, *thread_p;
 typedef struct mutex mutex_t, *mutex_p;
 
-int thread_count = 0; // 쓰레드 개수
-
 // 쓰레드 구조체 선언부
 struct thread {
   int        sp;                /* saved stack pointer */
@@ -51,6 +49,7 @@ thread_init(void)
   // main()으로 쓰기 때문에 미리 쓰레드 0을 RUNNING 상태로 만들어 놓는다.
   current_thread = &all_thread[0];
   current_thread->state = RUNNING;
+
   // System call
   // uthread_init()을 통해서 thread_schedule의 주소를 넘겨준다.
   // uthread_init()은 syscall.c에 정의되어 있다.
@@ -60,8 +59,6 @@ thread_init(void)
 static void
 thread_schedule(void)
 { 
-  // 쓰레드가 없으면 exit
-  if (thread_count == 0) exit();
 
   thread_p t;
   /* Find another runnable thread. */
@@ -123,7 +120,7 @@ thread_create(void (*func)())
   // 레지스터를 위한 공간
   t->sp -= 32;                             // space for registers that thread_switch expects
   t->state = RUNNABLE;
-  thread_count++;
+  thread_count(1);
 }
 
 static void 
@@ -137,12 +134,7 @@ mythread(void)
   printf(1, "my thread: exit\n");
   // 쓰레드가 종료되면 쓰레드 상태를 FREE로 바꿔준다.
   current_thread->state = FREE;
-  thread_count--;
-  if (thread_count == 0) {
-    // 모든 쓰레드가 종료되면 exit
-    printf(2, "thread_schedule: no runnable threads\n");
-    exit();
-  }
+  thread_count(-1);
     
   // 현재 쓰레드가 종료 되었기 때문에 스케줄링
   thread_schedule();

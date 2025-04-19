@@ -106,6 +106,7 @@ extern int sys_uptime(void);
 // sysproc.c에 선언되어있는 함수 호출
 extern int sys_uthread_init(void);
 // 아래에서 system call로 호출하는 함수들을 선언한다.
+extern int sys_thread_count(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -130,6 +131,7 @@ static int (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_uthread_init] sys_uthread_init,
+[SYS_thread_count] sys_thread_count,
 };
 
 void

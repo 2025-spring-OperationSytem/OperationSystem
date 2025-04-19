@@ -8,31 +8,53 @@
 #define RUNNABLE    0x2
 #define WAIT        0x3
 
-#define STACK_SIZE  8192
+#define STACK_SIZE  8188
 #define MAX_THREAD  10
 
 typedef struct thread thread_t, *thread_p;
 typedef struct mutex mutex_t, *mutex_p;
 
 struct thread {
-  int        tid;    /* thread id */
   int        sp;                /* saved stack pointer */
   char stack[STACK_SIZE];       /* the thread's stack */
   int        state;             /* FREE, RUNNING, RUNNABLE, WAIT */
+  int        tid;    /* thread id */
 };
 static thread_t all_thread[MAX_THREAD];
 thread_p  current_thread;
 thread_p  next_thread;
 extern void thread_switch(void);
+static void thread_schedule(void);
+int main();
 
-static void 
+void 
+thread_init(void)
+{
+  // main() is thread 0, which will make the first invocation to
+  // thread_schedule().  it needs a stack so that the first thread_switch() can
+  // save thread 0's state.  thread_schedule() won't run the main thread ever
+  // again, because its state is set to RUNNING, and thread_schedule() selects
+  // a RUNNABLE thread.
+  current_thread = &all_thread[0];
+  current_thread->sp = (int) (current_thread->stack + STACK_SIZE);   // set sp to the top of the stack
+  current_thread->sp -= 4;                              // space for return address
+  * (int *) (current_thread->sp) = (int)main;           // push return address on stack
+  current_thread->sp -= 32;                             // space for registers that thread_switch expects
+  current_thread->state = RUNNING;
+  thread_count(1);
+  current_thread->tid = 0;
+  uthread_init((int)thread_schedule);
+}
+
+static void
 thread_schedule(void)
 {
   thread_p t;
-
   /* Find another runnable thread. */
   next_thread = 0;
+
   for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
+    // RUNNABLE 상태인 스레드가 있으면 next_thread에 저장
     if (t->state == RUNNABLE && t != current_thread) {
       next_thread = t;
       break;
@@ -43,38 +65,30 @@ thread_schedule(void)
     /* The current thread is the only runnable thread; run it. */
     next_thread = current_thread;
   }
-
+  // runnable thread가 없으면 exit
   if (next_thread == 0) {
+    // current_thread가 RUNNING 상태이면 현재 쓰레드가 유일한 쓰레드이므로
+    // 스케줄링을 하지 않고 그냥 리턴
+    if (current_thread->state == RUNNING) return;
+    // 쓰레드가 없으면 exit
     printf(2, "thread_schedule: no runnable threads\n");
     exit();
   }
 
   if (current_thread != next_thread) {         /* switch threads?  */
     next_thread->state = RUNNING;
-    current_thread->state = RUNNABLE;
+    // current_thread가 RUNNING 상태이면 RUNNABLE로 바꿔준다.
+    if (current_thread->state == RUNNING) current_thread->state = RUNNABLE;
+    // context switch
     thread_switch();
   } else
     next_thread = 0;
 }
 
-void 
-thread_init(void)
-{
-  uthread_init(thread_schedule);
-
-  // main() is thread 0, which will make the first invocation to
-  // thread_schedule().  it needs a stack so that the first thread_switch() can
-  // save thread 0's state.  thread_schedule() won't run the main thread ever
-  // again, because its state is set to RUNNING, and thread_schedule() selects
-  // a RUNNABLE thread.
-  current_thread = &all_thread[0];
-  current_thread->state = RUNNING;
-  current_thread->tid=0;
-}
-
 int
 thread_create(void (*func)())
 {
+  printf(1, "thread_create\n");
   thread_p t;
 
   for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
@@ -82,35 +96,30 @@ thread_create(void (*func)())
   }
   t->sp = (int) (t->stack + STACK_SIZE);   // set sp to the top of the stack
   t->sp -= 4;                              // space for return address
-  /* 
-    set tid 
-  */
-  t->tid = t - all_thread; // set thread id
   * (int *) (t->sp) = (int)func;           // push return address on stack
   t->sp -= 32;                             // space for registers that thread_switch expects
   t->state = RUNNABLE;
-
+  thread_count(1);
+  t->tid = t - all_thread;
   return t->tid;
 }
 
 static void 
 thread_suspend(int tid)
 {
-  thread_p t;
-  for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
-    if (t->tid == tid) {
-      t->state = WAIT;
-      break;
-    }
-  }
+  printf(1, "thread_suspend\n");
+  thread_p t = &all_thread[tid];
+  t->state = WAIT;
 }
 
 static void 
 thread_resume(int tid)
 {
-  /*
-    resume execution of the thread with tid
-  */
+  printf(1, "thread_resume\n");
+  thread_p t = &all_thread[tid];
+  if (t->state == WAIT) {
+    t->state = RUNNABLE;
+  }
 }
 
 static void 
@@ -123,23 +132,31 @@ mythread(void)
   }
   printf(1, "my thread: exit\n");
   current_thread->state = FREE;
+  thread_count(-1);
 }
 
+void uthread_sleep(int ticks)
+{
+  int i;
+  for (i = 0; i < ticks * ticks * ticks; i++) {
+  }
+}
 
 int 
 main(int argc, char *argv[]) 
 {
+  printf(1,"main on \n");
   int tid1, tid2;
   thread_init();
   tid1=thread_create(mythread);
   tid2=thread_create(mythread);
-  sleep(3); /* you can adjust the sleep time */
+  uthread_sleep(100); /* you can adjust the sleep time */
   thread_suspend(tid1);
-  sleep(3);
+  uthread_sleep(100);
   thread_suspend(tid2);
   thread_resume(tid1);
-  sleep(3);
+  uthread_sleep(100);
   thread_resume(tid2);
-  sleep(100);
+  uthread_sleep(100);
   exit();
 }

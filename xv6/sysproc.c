@@ -37,6 +37,16 @@ sys_uthread_init(void)
 }
 
 int
+sys_thread_count(void)
+{
+    // 시스템콜의 인자값을 받아온다.
+    int count;
+    if (argint(0, &count) < 0)
+        return -1;
+    // proc.c의 thread_count() 함수 호출
+    return thread_count(count);
+}
+int
 sys_kill(void)
 {
   int pid;

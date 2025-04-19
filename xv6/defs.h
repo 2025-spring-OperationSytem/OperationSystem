@@ -122,6 +122,7 @@ void            wakeup(void*);
 void            yield(void);
 // 전역함수로 선언
 int				uthread_init(int address);
+int             thread_count(int count);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

@@ -371,6 +371,14 @@ uthread_init(int address)
   //cprintf("address: %d", address);
   return 0;
 }
+
+int thread_count(int count)
+{
+  struct proc *curproc = myproc();
+  curproc->thread_count += count;
+  return curproc->thread_count;
+}
+
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
 // intena because intena is a property of this
@@ -440,7 +448,7 @@ sleep(void *chan, struct spinlock *lk)
 
   if(lk == 0)
     panic("sleep without lk");
-
+  
   // Must acquire ptable.lock in order to
   // change p->state and then call sched.
   // Once we hold ptable.lock, we can be
@@ -454,8 +462,9 @@ sleep(void *chan, struct spinlock *lk)
   // Go to sleep.
   p->chan = chan;
   p->state = SLEEPING;
-
+  
   sched();
+
 
   // Tidy up.
   p->chan = 0;
