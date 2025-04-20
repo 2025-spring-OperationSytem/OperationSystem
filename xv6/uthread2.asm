@@ -417,10 +417,7 @@ child_thread(void)
  3a6:	6a 01                	push   $0x1
  3a8:	e8 6a 05 00 00       	call   917 <printf>
  3ad:	83 c4 10             	add    $0x10,%esp
-
-  
   while (1) {
-   
     if (global_count >= 10) {
  3b0:	a1 90 4f 01 00       	mov    0x14f90,%eax
  3b5:	83 f8 09             	cmp    $0x9,%eax
@@ -430,8 +427,6 @@ child_thread(void)
       continue;
  3bf:	e9 ab 00 00 00       	jmp    46f <child_thread+0xec>
     }
-
-    // 출력
     printf(1, "[child] child thread 0x%x\n", (int) current_thread);
  3c4:	a1 20 0f 00 00       	mov    0xf20,%eax
  3c9:	83 ec 04             	sub    $0x4,%esp
@@ -451,12 +446,10 @@ child_thread(void)
  3f9:	6a 01                	push   $0x1
  3fb:	e8 17 05 00 00       	call   917 <printf>
  400:	83 c4 10             	add    $0x10,%esp
-
     global_count++;
  403:	a1 90 4f 01 00       	mov    0x14f90,%eax
  408:	83 c0 01             	add    $0x1,%eax
  40b:	a3 90 4f 01 00       	mov    %eax,0x14f90
-
     if (global_count >= 10) {
  410:	a1 90 4f 01 00       	mov    0x14f90,%eax
  415:	83 f8 09             	cmp    $0x9,%eax
@@ -480,12 +473,9 @@ child_thread(void)
  44f:	6a 01                	push   $0x1
  451:	e8 c1 04 00 00       	call   917 <printf>
  456:	83 c4 10             	add    $0x10,%esp
-
-  
       global_count = 0;
  459:	c7 05 90 4f 01 00 00 	movl   $0x0,0x14f90
  460:	00 00 00 
-
       thread_schedule();
  463:	e8 98 fb ff ff       	call   0 <thread_schedule>
       break;

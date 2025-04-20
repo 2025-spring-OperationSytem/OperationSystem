@@ -29,20 +29,17 @@ extern void thread_switch(void);
 static void 
 thread_schedule(void)
 {
-  thread_p t;
-
-  /* Find another runnable thread. */
+  int curr_index = current_thread - all_thread;
   next_thread = 0;
-  for (t = all_thread+1; t < all_thread + MAX_THREAD; t++) {
-    if (t->state == RUNNABLE && t != current_thread) {
-      next_thread = t;
+
+
+  for (int count = 1; count <= MAX_THREAD; count++) {
+    int i = (curr_index + count) % MAX_THREAD;;
+
+    if (all_thread[i].state == RUNNABLE && i != 0) {
+      next_thread = &all_thread[i];
       break;
     }
-  }
-
-  if (t >= all_thread + MAX_THREAD && current_thread->state == RUNNABLE) {
-    /* The current thread is the only runnable thread; run it. */
-    next_thread = current_thread;
   }
 
   if (next_thread == 0) {
@@ -55,8 +52,6 @@ thread_schedule(void)
     if (current_thread->state != FREE) {
       current_thread->state = RUNNABLE;
     }
-  
-    printf(1, "[sched] switch from tid=%d to tid=%d\n", current_thread->tid, next_thread->tid);
     thread_switch();
   } else
     next_thread = 0;
@@ -143,7 +138,7 @@ int thread_join(int tid) {
       current_thread->state = RUNNABLE;
       break;
     }
-
+    
     // 스케줄링
     thread_schedule();
   }
@@ -155,12 +150,15 @@ int thread_join(int tid) {
 static void 
 child_thread(void)
 {
-  int i;
-  printf(1, "[child] started: tid=%d, ptid=%d\n", current_thread->tid, current_thread->ptid);
-  for (i = 0; i < 10; i++) {
-    printf(1, "[child] child thread 0x%x running iteration %d\n", (int)current_thread, i);
+  // tid별 작업량 차이 -> 종료시간 다르게해서 join 이전 Child_Thread 종료 방지
+  int limit = 10 + current_thread->tid * 2; 
+  for (int i = 0; i < limit; i++) {
+    printf(1, "[child] tid=%d running iteration %d\n", current_thread->tid, i);
+    thread_schedule();
   }
   printf(1, "child thread: exit\n");
+
+
   current_thread->state = FREE;
   thread_schedule(); 
 }
@@ -196,8 +194,6 @@ main(int argc, char *argv[])
 {
   thread_init();
   thread_create(mythread);
-  // main thread는 아무 역할이 없으므로 바로 FREE로 설정
-  //current_thread->state = FREE;
   thread_schedule(); 
   return 0;
 }
