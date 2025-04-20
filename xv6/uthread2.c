@@ -26,27 +26,22 @@ thread_p  current_thread;
 thread_p  next_thread;
 extern void thread_switch(void);
 
+const char* state_str[] = { "FREE", "RUNNING", "RUNNABLE", "WAIT" };
+
 static void 
 thread_schedule(void)
 {
-  thread_p t;
-
-  /* Find another runnable thread. */
+  int curr_index = current_thread - all_thread;
   next_thread = 0;
-  for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
-    //printf(1,"t: %x, state %x \n", t, t->state);
-    if(t == &all_thread[0] && t->state == RUNNABLE){
-      continue;
-    }
-    if (t->state == RUNNABLE && t != current_thread) {
-      next_thread = t;
+
+
+  for (int count = 1; count <= MAX_THREAD; count++) {
+    int i = (curr_index + count) % MAX_THREAD;;
+
+    if (all_thread[i].state == RUNNABLE && i != 0) {
+      next_thread = &all_thread[i];
       break;
     }
-  }
-
-  if (t >= all_thread + MAX_THREAD && current_thread->state == RUNNABLE) {
-    /* The current thread is the only runnable thread; run it. */
-    next_thread = current_thread;
   }
 
   if (next_thread == 0) {
@@ -101,7 +96,7 @@ thread_create(void (*func)())
   t->ptid = current_thread->tid;
   t->state = RUNNABLE;
 
-  printf(1, "[create] tid=%d func address = 0x%x\n", t->tid, func);
+  printf(1, "[create] tid=%d func=0x%x state=%d (%s)\n", t->tid, (unsigned int)func, t->state, state_str[t->state]);
 }
 
 static void thread_join_all(void) {
@@ -151,18 +146,32 @@ static void thread_join_all(void) {
   printf(1, "[thread_join_all] tid=%d all children finished\n", current_thread->tid);
 }
 
+static int global_count = 0;
+
 static void 
 child_thread(void)
 {
-  int i;
   printf(1, "[child] started: tid=%d, ptid=%d\n", current_thread->tid, current_thread->ptid);
-  for (i = 0; i < 10; i++) {
+  while (1) {
+    if (global_count >= 10) {
+      thread_schedule();
+      continue;
+    }
     printf(1, "[child] child thread 0x%x\n", (int) current_thread);
+    printf(1, "[child] child thread_schedule : tid=%d, ptid=%d\n", current_thread->tid, current_thread->ptid);
+    global_count++;
+    if (global_count >= 10) {
+      current_thread->state = FREE;
+      printf(1, "[child] tid=%d marking self FREE\n", current_thread->tid);
+      printf(1, "[child] child thread: exit\n");
+      global_count = 0;
+      thread_schedule();
+      break;
+    }
+
+    thread_schedule();
   }
-  current_thread->state = FREE;
-  printf(1, "[child] tid=%d marking self FREE\n", current_thread->tid);
-  thread_schedule(); 
-  printf(1, "[child] child thread: exit\n");
+  
 }
 
 static void 
