@@ -464,8 +464,6 @@ sleep(void *chan, struct spinlock *lk)
   p->state = SLEEPING;
   
   sched();
-
-
   // Tidy up.
   p->chan = 0;
 

@@ -61,8 +61,7 @@ trap(struct trapframe *tf)
     // 현재 실행하고 있는 프로세스 호출
     struct proc* p = myproc();
     // 커널 모드에서 동작 && 프로세스 존재 && 스케줄러가 존재(uthread_init()에서 설정)
-    
-    if ((tf->cs&3) == 0 && p != 0 && p->scheduler != 0 && p->thread_count > 1 && ticks % 2 == 0) {
+    if ((tf->cs&3) == 0 && p != 0 && p->scheduler != 0 && p->thread_count > 1 && ticks % 5 == 0) {
       // eip를 uthread의 scheduler의 주소로 설정
       p->tf->eip = (uint)p->scheduler;
     }

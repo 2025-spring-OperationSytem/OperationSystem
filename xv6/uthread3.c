@@ -41,11 +41,11 @@ thread_init(void)
   * (int *) (current_thread->sp) = (int)main;           // push return address on stack
   current_thread->sp -= 32;                             // space for registers that thread_switch expects
   current_thread->state = RUNNING;
-  thread_count(1);
   current_thread->tid = 0;
   uthread_init((int)thread_schedule);
 }
 
+int flag =0;
 static void
 thread_schedule(void)
 {
@@ -54,6 +54,13 @@ thread_schedule(void)
   next_thread = 0;
 
   for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
+    if(t == &all_thread[0] && t->state == RUNNABLE && flag == 1){
+      flag = 0;
+      continue;
+    }
+    else {
+      flag = 1;
+    }
     // RUNNABLE 상태인 스레드가 있으면 next_thread에 저장
     if (t->state == RUNNABLE && t != current_thread) {
       next_thread = t;
@@ -110,6 +117,7 @@ thread_suspend(int tid)
   printf(1, "thread_suspend\n");
   thread_p t = &all_thread[tid];
   t->state = WAIT;
+  thread_schedule();
 }
 
 static void 
@@ -120,6 +128,7 @@ thread_resume(int tid)
   if (t->state == WAIT) {
     t->state = RUNNABLE;
   }
+  thread_schedule();
 }
 
 static void 
@@ -134,11 +143,14 @@ mythread(void)
   current_thread->state = FREE;
   thread_count(-1);
 }
-
-void uthread_sleep(int ticks)
+void
+uthread_sleep(int ticks)
 {
   int i;
-  for (i = 0; i < ticks * ticks * ticks; i++) {
+  for (i = 0; i < ticks * 10; i++) {
+    if (ticks % 10 == 0) {
+      printf(1, "");
+    }
   }
 }
 
@@ -150,13 +162,14 @@ main(int argc, char *argv[])
   thread_init();
   tid1=thread_create(mythread);
   tid2=thread_create(mythread);
-  uthread_sleep(100); /* you can adjust the sleep time */
+  thread_schedule();
+  uthread_sleep(300); /* you can adjust the sleep time */
   thread_suspend(tid1);
-  uthread_sleep(100);
+  uthread_sleep(300);
   thread_suspend(tid2);
   thread_resume(tid1);
-  uthread_sleep(100);
+  uthread_sleep(300);
   thread_resume(tid2);
-  uthread_sleep(100);
+  uthread_sleep(10);
   exit();
 }
