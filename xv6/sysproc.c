@@ -7,6 +7,42 @@
 #include "mmu.h"
 #include "proc.h"
 
+#include "pstat.h"
+
+int getpinfo(struct pstat *ps);
+
+int sys_getpinfo(void) {
+  struct pstat *ps;
+  if (argptr(0, (char**)&ps, sizeof(struct pstat)) < 0)
+    return -1;
+  return getpinfo(ps);
+}
+
+extern int set_sched_policy(int);
+int
+sys_setSchedPolicy(void)
+{
+  int policy;
+  if(argint(0, &policy) < 0)
+    return -1;
+  cprintf("[SYSCALL] setSchedPolicy called with %d\n", policy);
+  return set_sched_policy(policy);
+}
+
+extern int get_sched_policy(void);
+
+int
+sys_getSchedPolicy(void)
+{
+  return get_sched_policy();
+}
+int
+sys_yield(void)
+{
+  yield(); // 커널 내부 yield 함수
+  return 0;
+}
+
 int
 sys_fork(void)
 {

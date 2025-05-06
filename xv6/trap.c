@@ -9,6 +9,14 @@
 #include "spinlock.h"
 #include "i8254.h"
 
+#include "pstat.h"  
+
+extern struct {
+  struct spinlock lock;
+  struct proc proc[NPROC];
+} ptable;
+extern struct pstat kernel_pstat;
+
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
 extern uint vectors[];  // in vectors.S: array of 256 entry pointers
@@ -55,6 +63,15 @@ trap(struct trapframe *tf)
       wakeup(&ticks);
       release(&tickslock);
     }
+    //현재 실행 중인 프로세스에 대해 tick 누적
+    struct proc* p = myproc();
+    if (p != 0 && p->state == RUNNING) {
+      int idx = myproc() - ptable.proc;
+      int q = kernel_pstat.priority[idx];
+      kernel_pstat.ticks[idx][q]++;  //  실제 실행 시간 증가
+      //cprintf("[TIMER] PID %d ticked on Q%d, total = %d\n",myproc()->pid, q, kernel_pstat.ticks[idx][q]);
+    }
+
     lapiceoi();
     break;
   case T_IRQ0 + IRQ_IDE:

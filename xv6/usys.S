@@ -29,3 +29,8 @@ SYSCALL(getpid)
 SYSCALL(sbrk)
 SYSCALL(sleep)
 SYSCALL(uptime)
+
+SYSCALL(getpinfo)
+SYSCALL(setSchedPolicy)
+SYSCALL(yield)
+SYSCALL(getSchedPolicy)

@@ -8,6 +8,10 @@
 #include "spinlock.h"
 #include "debug.h"
 
+#include "pstat.h"
+struct pstat kernel_pstat;
+
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -20,6 +24,9 @@ extern void forkret(void);
 extern void trapret(void);
 
 static void wakeup1(void *chan);
+
+void run_mlfq(void);
+void enqueue(struct proc *p, int level);  
 
 void
 pinit(void)
@@ -93,6 +100,14 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
 
+    
+  int i = p - ptable.proc; // kernel_pstat 인덱스 계산
+  kernel_pstat.inuse[i] = 1;
+  kernel_pstat.pid[i] = p->pid;
+  kernel_pstat.priority[i] = 3; // 기본 우선순위 (Q3)
+  memset(kernel_pstat.ticks[i], 0, sizeof(kernel_pstat.ticks[i]));
+  memset(kernel_pstat.wait_ticks[i], 0, sizeof(kernel_pstat.wait_ticks[i]));
+
   release(&ptable.lock);
 
 
@@ -155,6 +170,9 @@ userinit(void)
   acquire(&ptable.lock);
 
   p->state = RUNNABLE;
+
+  if (mycpu()->sched_policy > 0)
+  enqueue(p, 3);
 
   release(&ptable.lock);
 }
@@ -222,6 +240,12 @@ fork(void)
 
   np->state = RUNNABLE;
 
+  cprintf("[FORK] pid %d created, sched_policy = %d\n", np->pid, mycpu()->sched_policy);
+  if (mycpu()->sched_policy > 0){
+    kernel_pstat.priority[np - ptable.proc] = 3;
+  }
+   
+
   release(&ptable.lock);
 
   return pid;
@@ -266,6 +290,10 @@ exit(void)
         wakeup1(initproc);
     }
   }
+
+  //kerner_pstat 상태 제거
+  int i = curproc - ptable.proc;
+  kernel_pstat.inuse[i] = 0;
 
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
@@ -338,24 +366,39 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
+    
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+    if (mycpu()->sched_policy == 0) {
+      // Round Robin 스케줄링
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->state != RUNNABLE)
+          continue;
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
 
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
-    }
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+      // wait_ticks 누적
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->state == RUNNABLE && p != c->proc){
+          int i = p - ptable.proc;
+          kernel_pstat.wait_ticks[i][kernel_pstat.priority[i]]++;
+        }
+      }
+    } else {
+      // TODO: MLFQ로 넘기기
+      run_mlfq();
+    }  
+
     release(&ptable.lock);
 
   }
@@ -536,5 +579,178 @@ procdump(void)
         cprintf(" %p", pc[i]);
     }
     cprintf("\n");
+  }
+}
+
+//현재 커널의 프로세스 상태들을 pstat에 담아서 유저에게 전달해주는 시스템 콜
+int getpinfo(struct pstat *pstat) {
+  acquire(&ptable.lock);
+  for (int i = 0; i < NPROC; i++) {
+    pstat->inuse[i] = kernel_pstat.inuse[i];
+    pstat->pid[i] = kernel_pstat.pid[i];
+    pstat->priority[i] = kernel_pstat.priority[i];
+    pstat->state[i] = ptable.proc[i].state; // proc에서 유일하게 읽기 가능
+
+    for (int j = 0; j < 4; j++) {
+      pstat->ticks[i][j] = kernel_pstat.ticks[i][j];
+      pstat->wait_ticks[i][j] = kernel_pstat.wait_ticks[i][j];
+    }
+  }
+  release(&ptable.lock);
+  return 0;
+}
+
+int
+set_sched_policy(int policy)
+{
+  if (policy < 0 || policy > 3)
+    return -1;
+
+  pushcli(); 
+  mycpu()->sched_policy = policy;
+  popcli();
+
+  return 0;
+}
+int
+get_sched_policy(void)
+{
+  pushcli();  
+  int policy = mycpu()->sched_policy;
+  popcli();   
+  return policy;
+}
+// 각 우선순위 큐 (Q3: 가장 높은 우선순위 ~ Q0: 가장 낮은 우선순위)
+struct proc* mlfq_queues[4][NPROC];
+int q_front[4] = {0};
+int q_back[4] = {0};
+
+// Enqueue 함수
+void enqueue(struct proc *p, int level) {
+  for (int i = 0; i < NPROC; i++) {
+    if (mlfq_queues[level][i] == p) {
+      cprintf("[ENQUEUE] DUP PID %d already in Q%d\n", p->pid, level);
+      return;
+    }
+  }
+  for (int i = 0; i < NPROC; i++) {
+    if (mlfq_queues[level][i] == 0) {
+      mlfq_queues[level][i] = p;
+      cprintf("[ENQUEUE] PID %d → Q%d (inserted)\n", p->pid, level);
+      return;
+    }
+  }
+  cprintf("[ENQUEUE] Failed: Q%d full\n", level);
+}
+
+struct proc* dequeue(int level) {
+  struct proc* p = 0;
+
+  for (int i = 0; i < NPROC; i++) {
+    if (mlfq_queues[level][i] != 0) {
+      p = mlfq_queues[level][i];
+      for (int j = i; j < NPROC - 1; j++)
+        mlfq_queues[level][j] = mlfq_queues[level][j + 1];
+      mlfq_queues[level][NPROC - 1] = 0;
+      break;
+    }
+  }
+  return p;
+}
+
+// Boosting 조건 검사
+void apply_priority_boosting(void) {
+  for (int i = 0; i < NPROC; i++) {
+    if (!kernel_pstat.inuse[i]) continue;
+    int q = kernel_pstat.priority[i];
+    int waited = kernel_pstat.wait_ticks[i][q];
+
+    if (q == 0 && waited >= 500) {
+      kernel_pstat.priority[i] = 1;
+      kernel_pstat.wait_ticks[i][0] = 0;
+      cprintf("[BOOST] PID %d Q0→Q1\n", kernel_pstat.pid[i]);
+      enqueue(&ptable.proc[i], 1);
+    } else if ((q == 1 && waited >= 320) || (q == 2 && waited >= 160)) {
+      kernel_pstat.priority[i] = q + 1;
+      kernel_pstat.wait_ticks[i][q] = 0;
+      cprintf("[BOOST] PID %d Q%d→Q%d\n", kernel_pstat.pid[i], q, q + 1);
+      enqueue(&ptable.proc[i], q + 1);
+    }
+  }
+}
+
+// Time slice 계산
+int get_time_slice(int level) {
+  if (level == 3) return 8;
+  if (level == 2) return 16;
+  if (level == 1) return 32;
+  return -1; // FIFO (Q0)
+}
+
+// 프로세스 실행 로직
+void run_process(struct proc* p, int q, int slice) {
+  
+  struct cpu *c = mycpu();
+  c->proc = p;
+  switchuvm(p);
+  p->state = RUNNING;
+
+  int i = p - ptable.proc;
+  cprintf("[MLFQ] Running PID %d at Q%d with slice %d\n", p->pid, q, slice);
+
+  // 기존 tick 값 기억
+  cprintf("[RUN] PID %d at Q%d (slice %d)\n", p->pid, q, slice);
+  int prev_ticks = kernel_pstat.ticks[i][q];
+
+  // 실제 프로세스를 실행 (문맥 전환)
+  swtch(&(c->scheduler), p->context);
+  // 유저 공간에서 실행이 끝나고 다시 돌아옴
+  switchkvm();
+  c->proc = 0;
+
+  // 실제 실행된 tick 수를 기반으로 demotion 판단 (pstat 값이 올라간 상태여야 함)
+  int delta = kernel_pstat.ticks[i][q] - prev_ticks;
+  // Demotion 조건
+  if (slice != -1 && delta >= slice && q > 0) {
+    kernel_pstat.priority[i] = q - 1;
+    cprintf("[DEMOTE] PID %d Q%d → Q%d (delta=%d)\n", p->pid, q, q - 1, delta);
+    enqueue(p, q - 1);
+  } else {
+    enqueue(p, q); // 다시 같은 큐로
+  }
+}
+
+
+// MLFQ 스케줄러 진입점
+void run_mlfq(void) {
+  
+  apply_priority_boosting();
+  
+  for (int q = 3; q >= 0; q--) {
+    for (int i = 0; i < NPROC; i++) {
+      struct proc *p = mlfq_queues[q][i];
+      //cprintf("[MLFQ_LOOP] Q%d index %d: pid %d, state %d\n", q, i,
+        //p ? p->pid : -1, p ? p->state : -1);
+      if (p == 0 || p->state != RUNNABLE)
+        continue;
+      
+      // 실행할 프로세스는 dequeue
+      dequeue(q);
+ 
+      int slice = get_time_slice(q);
+      run_process(p, q, slice);
+      goto tick_update; // 한 번만 실행
+    }
+  }
+
+tick_update:
+  // wait tick 증가 (실행 안 된 RUNNABLE 프로세스만)
+  for (int i = 0; i < NPROC; i++) {
+    struct proc* p = &ptable.proc[i];
+    if (!kernel_pstat.inuse[i]) continue;
+    if (p->state == RUNNABLE) {
+      int q = kernel_pstat.priority[i];
+      kernel_pstat.wait_ticks[i][q]++;
+    }
   }
 }
