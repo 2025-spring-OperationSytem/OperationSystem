@@ -69,7 +69,7 @@ trap(struct trapframe *tf)
       int idx = myproc() - ptable.proc;
       int q = kernel_pstat.priority[idx];
       kernel_pstat.ticks[idx][q]++;  //  실제 실행 시간 증가
-      //cprintf("[TIMER] PID %d ticked on Q%d, total = %d\n",myproc()->pid, q, kernel_pstat.ticks[idx][q]);
+      cprintf("[TIMER] PID %d ticked on Q%d, total = %d\n",myproc()->pid, q, kernel_pstat.ticks[idx][q]);
     }
 
     lapiceoi();

@@ -8,13 +8,11 @@ int workload(int n) {
   int i, j = 0;
   for (i = 0; i < n; i++){
     j += i * j + 1;
-    if (i % 1000000 == 0) yield(); // 주기적으로 CPU 양보
+    //if (i % 1000000 == 0) yield(); // 주기적으로 CPU 양보
   }
   return j;
 }
 
-
-// 결과 출력
 void print_stat() {
   struct pstat ps;
   getpinfo(&ps);
@@ -31,37 +29,45 @@ void print_stat() {
 }
 
 void run_mlfq_with_tracking_and_boosting() {
+  printf(1, "[DEBUG] Entered run_mlfq_with_tracking_and_boosting()\n");
+  sleep(1); 
+  
   for (int i = 0; i < 3; i++) {
-    if (fork() == 0) {
-      if (i == 0) {
-        printf(1, "[Process %d] Short workload\n", i);
-        workload(8000000); // Q3 유지
-      } else if (i == 1) {
-        printf(1, "[Process %d] Medium workload\n", i);
-        workload(40000000); // Q3→Q2→Q1
-      } else {
-        printf(1, "[Process %d] Long workload\n", i);
-        workload(100000000); // Q3→Q2→Q1→Q0
-      }
+    int pid = fork();
+    if (pid < 0) {
+      printf(1, "[ERROR] fork failed at i=%d\n", i);
+      sleep(1);
+    }
+    if (pid == 0) {
+      printf(1, "[CHILD] i=%d, PID=%d\n", i, getpid());
+      sleep(1);
+      workload(10000000 * (i+1));
       exit();
+    } else {
+      printf(1, "[PARENT] forked child PID=%d at i=%d\n", pid, i);
+      sleep(1);
     }
   }
 
+  // 자식 다 만든 이후에 정책 변경
+  printf(1, "[DEBUG] Setting MLFQ policy now...\n");
+  setSchedPolicy(1);
+  sleep(1);
+
+  int sched = getSchedPolicy();
+  printf(1, "[DEBUG] Current sched_policy = %d\n", sched);
+  sleep(1);
+
   for (int i = 0; i < 3; i++) wait();
 
-  print_stat(); // 결과 확인
+  print_stat();
 }
 
 int main(void) {
   printf(1, "\n===== [POLICY 1: MLFQ with tracking & boosting] =====\n");
-  setSchedPolicy(1);
-  printf(1, "[FORKED] sched_policy = %d (child)\n", getSchedPolicy());
+  run_mlfq_with_tracking_and_boosting();
 
-  if (fork() == 0) {
-    printf(1, "[FORKED] sched_policy = %d (child)\n", getSchedPolicy());
-    run_mlfq_with_tracking_and_boosting();
-    exit();
-  }
-  wait();
+  printf(1, "\n===== [POLICY 1: exit] =====\n");
+  sleep(1);
   exit();
 }

@@ -241,8 +241,9 @@ fork(void)
   np->state = RUNNABLE;
 
   cprintf("[FORK] pid %d created, sched_policy = %d\n", np->pid, mycpu()->sched_policy);
-  if (mycpu()->sched_policy > 0){
+  if (cpus[0].sched_policy > 0){
     kernel_pstat.priority[np - ptable.proc] = 3;
+    enqueue(np, 3);
   }
    
 
@@ -600,6 +601,20 @@ int getpinfo(struct pstat *pstat) {
   return 0;
 }
 
+void mlfq_enqueue_all_runnable(void) {
+  acquire(&ptable.lock);
+  for (int i = 0; i < NPROC; i++) {
+    if (!kernel_pstat.inuse[i]) continue;
+    struct proc *p = &ptable.proc[i];
+    if (p->state == RUNNABLE) {
+      int q = kernel_pstat.priority[i];
+      enqueue(p, q);
+      cprintf("[AUTO-ENQUEUE] PID %d -> Q%d\n", p->pid, q);
+    }
+  }
+  release(&ptable.lock);
+}
+
 int
 set_sched_policy(int policy)
 {
@@ -609,6 +624,9 @@ set_sched_policy(int policy)
   pushcli(); 
   mycpu()->sched_policy = policy;
   popcli();
+
+  if (policy > 0)
+  mlfq_enqueue_all_runnable();
 
   return 0;
 }
@@ -620,6 +638,8 @@ get_sched_policy(void)
   popcli();   
   return policy;
 }
+
+
 // 각 우선순위 큐 (Q3: 가장 높은 우선순위 ~ Q0: 가장 낮은 우선순위)
 struct proc* mlfq_queues[4][NPROC];
 int q_front[4] = {0};
@@ -629,18 +649,18 @@ int q_back[4] = {0};
 void enqueue(struct proc *p, int level) {
   for (int i = 0; i < NPROC; i++) {
     if (mlfq_queues[level][i] == p) {
-      cprintf("[ENQUEUE] DUP PID %d already in Q%d\n", p->pid, level);
+      //cprintf("[ENQUEUE] DUP PID %d already in Q%d\n", p->pid, level);
       return;
     }
   }
   for (int i = 0; i < NPROC; i++) {
     if (mlfq_queues[level][i] == 0) {
       mlfq_queues[level][i] = p;
-      cprintf("[ENQUEUE] PID %d → Q%d (inserted)\n", p->pid, level);
+      //cprintf("[ENQUEUE] PID %d → Q%d (inserted)\n", p->pid, level);
       return;
     }
   }
-  cprintf("[ENQUEUE] Failed: Q%d full\n", level);
+  //cprintf("[ENQUEUE] Failed: Q%d full\n", level);
 }
 
 struct proc* dequeue(int level) {
@@ -652,6 +672,7 @@ struct proc* dequeue(int level) {
       for (int j = i; j < NPROC - 1; j++)
         mlfq_queues[level][j] = mlfq_queues[level][j + 1];
       mlfq_queues[level][NPROC - 1] = 0;
+      //cprintf("[DEQUEUE] PID %d from Q%d\n", p->pid, level);
       break;
     }
   }
@@ -687,20 +708,15 @@ int get_time_slice(int level) {
   return -1; // FIFO (Q0)
 }
 
-// 프로세스 실행 로직
 void run_process(struct proc* p, int q, int slice) {
-  
   struct cpu *c = mycpu();
   c->proc = p;
   switchuvm(p);
   p->state = RUNNING;
 
   int i = p - ptable.proc;
-  cprintf("[MLFQ] Running PID %d at Q%d with slice %d\n", p->pid, q, slice);
 
-  // 기존 tick 값 기억
-  cprintf("[RUN] PID %d at Q%d (slice %d)\n", p->pid, q, slice);
-  int prev_ticks = kernel_pstat.ticks[i][q];
+  cprintf("[RUN_PROCESS] PID %d starts at Q%d\n", p->pid, q);
 
   // 실제 프로세스를 실행 (문맥 전환)
   swtch(&(c->scheduler), p->context);
@@ -708,15 +724,17 @@ void run_process(struct proc* p, int q, int slice) {
   switchkvm();
   c->proc = 0;
 
-  // 실제 실행된 tick 수를 기반으로 demotion 판단 (pstat 값이 올라간 상태여야 함)
-  int delta = kernel_pstat.ticks[i][q] - prev_ticks;
-  // Demotion 조건
-  if (slice != -1 && delta >= slice && q > 0) {
+  int executed = kernel_pstat.ticks[i][q];
+  cprintf("[CHECK] PID %d total ticks at Q%d = %d (slice = %d)\n", p->pid, q, executed, slice);
+
+  if (slice != -1 && executed >= slice && q > 0) {
     kernel_pstat.priority[i] = q - 1;
-    cprintf("[DEMOTE] PID %d Q%d → Q%d (delta=%d)\n", p->pid, q, q - 1, delta);
+    kernel_pstat.ticks[i][q] = 0;  // 현재 큐에서의 실행 시간 초기화
+    cprintf("[DEMOTE] PID %d Q%d → Q%d\n", p->pid, q, q - 1);
     enqueue(p, q - 1);
   } else {
-    enqueue(p, q); // 다시 같은 큐로
+    cprintf("[RE-ENQUEUE] PID %d stays in Q%d\n", p->pid, q);
+    enqueue(p, q);
   }
 }
 
@@ -730,7 +748,7 @@ void run_mlfq(void) {
     for (int i = 0; i < NPROC; i++) {
       struct proc *p = mlfq_queues[q][i];
       //cprintf("[MLFQ_LOOP] Q%d index %d: pid %d, state %d\n", q, i,
-        //p ? p->pid : -1, p ? p->state : -1);
+      //  p ? p->pid : -1, p ? p->state : -1);
       if (p == 0 || p->state != RUNNABLE)
         continue;
       
