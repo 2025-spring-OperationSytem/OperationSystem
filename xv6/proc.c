@@ -757,34 +757,34 @@ void run_process(struct proc* p, int q, int slice) {
 
 // MLFQ 스케줄러 진입점
 void run_mlfq(void) {
-  
+  int just_ran_pid = -1;
+
   apply_priority_boosting();
-  
+
   for (int q = 3; q >= 0; q--) {
     for (int i = 0; i < NPROC; i++) {
       struct proc *p = mlfq_queues[q][i];
-      //cprintf("[MLFQ_LOOP] Q%d index %d: pid %d, state %d\n", q, i,
-      //  p ? p->pid : -1, p ? p->state : -1);
       if (p == 0 || p->state != RUNNABLE)
         continue;
-      
-      // 실행할 프로세스는 dequeue
+
       dequeue(q);
- 
       int slice = get_time_slice(q);
       run_process(p, q, slice);
-      goto tick_update; // 한 번만 실행
+      just_ran_pid = p->pid;
+      goto tick_update;
     }
   }
 
-tick_update:
-  // wait tick 증가 (실행 안 된 RUNNABLE 프로세스만)
+  tick_update:
   for (int i = 0; i < NPROC; i++) {
     struct proc* p = &ptable.proc[i];
     if (!kernel_pstat.inuse[i]) continue;
-    if (p->state == RUNNABLE && p != mycpu()->proc) {
+    if (p->state == RUNNABLE && p->pid != just_ran_pid) {
       int q = kernel_pstat.priority[i];
       kernel_pstat.wait_ticks[i][q]++;
+      if (kernel_pstat.wait_ticks[i][q] % 10 == 0) {  // 확인용: 10tick마다 출력
+        cprintf("[WAIT] PID %d at Q%d wait_ticks = %d\n", p->pid, q, kernel_pstat.wait_ticks[i][q]);
+      }
     }
   }
 }

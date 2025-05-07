@@ -1,1 +1,2 @@
-mlfq_test.o: mlfq_test.c types.h user.h pstat.h param.h
+mlfq_test.o: mlfq_test.c /usr/include/stdc-predef.h types.h user.h \
+ pstat.h param.h

@@ -26,10 +26,10 @@ grep(char *pattern, int fd)
   15:	01 45 f4             	add    %eax,-0xc(%ebp)
     buf[m] = '\0';
   18:	8b 45 f4             	mov    -0xc(%ebp),%eax
-  1b:	05 40 0b 00 00       	add    $0xb40,%eax
+  1b:	05 00 0e 00 00       	add    $0xe00,%eax
   20:	c6 00 00             	movb   $0x0,(%eax)
     p = buf;
-  23:	c7 45 f0 40 0b 00 00 	movl   $0xb40,-0x10(%ebp)
+  23:	c7 45 f0 00 0e 00 00 	movl   $0xe00,-0x10(%ebp)
     while((q = strchr(p, '\n')) != 0){
   2a:	eb 44                	jmp    70 <grep+0x70>
       *q = 0;
@@ -72,7 +72,7 @@ grep(char *pattern, int fd)
   87:	75 a3                	jne    2c <grep+0x2c>
     }
     if(p == buf)
-  89:	81 7d f0 40 0b 00 00 	cmpl   $0xb40,-0x10(%ebp)
+  89:	81 7d f0 00 0e 00 00 	cmpl   $0xe00,-0x10(%ebp)
   90:	75 07                	jne    99 <grep+0x99>
       m = 0;
   92:	c7 45 f4 00 00 00 00 	movl   $0x0,-0xc(%ebp)
@@ -81,13 +81,13 @@ grep(char *pattern, int fd)
   9d:	7e 21                	jle    c0 <grep+0xc0>
       m -= p - buf;
   9f:	8b 45 f0             	mov    -0x10(%ebp),%eax
-  a2:	2d 40 0b 00 00       	sub    $0xb40,%eax
+  a2:	2d 00 0e 00 00       	sub    $0xe00,%eax
   a7:	29 45 f4             	sub    %eax,-0xc(%ebp)
       memmove(buf, p, m);
   aa:	83 ec 04             	sub    $0x4,%esp
   ad:	ff 75 f4             	push   -0xc(%ebp)
   b0:	ff 75 f0             	push   -0x10(%ebp)
-  b3:	68 40 0b 00 00       	push   $0xb40
+  b3:	68 00 0e 00 00       	push   $0xe00
   b8:	e8 80 04 00 00       	call   53d <memmove>
   bd:	83 c4 10             	add    $0x10,%esp
   while((n = read(fd, buf+m, sizeof(buf)-m-1)) > 0){
@@ -95,7 +95,7 @@ grep(char *pattern, int fd)
   c3:	ba ff 03 00 00       	mov    $0x3ff,%edx
   c8:	29 c2                	sub    %eax,%edx
   ca:	8b 45 f4             	mov    -0xc(%ebp),%eax
-  cd:	05 40 0b 00 00       	add    $0xb40,%eax
+  cd:	05 00 0e 00 00       	add    $0xe00,%eax
   d2:	83 ec 04             	sub    $0x4,%esp
   d5:	52                   	push   %edx
   d6:	50                   	push   %eax
@@ -983,7 +983,7 @@ printint(int fd, int xx, int base, int sgn)
  6ab:	8b 45 f4             	mov    -0xc(%ebp),%eax
  6ae:	8d 50 01             	lea    0x1(%eax),%edx
  6b1:	89 55 f4             	mov    %edx,-0xc(%ebp)
- 6b4:	0f b6 91 10 0b 00 00 	movzbl 0xb10(%ecx),%edx
+ 6b4:	0f b6 91 d8 0d 00 00 	movzbl 0xdd8(%ecx),%edx
  6bb:	88 54 05 dc          	mov    %dl,-0x24(%ebp,%eax,1)
   }while((x /= base) != 0);
  6bf:	8b 4d 10             	mov    0x10(%ebp),%ecx
@@ -1223,7 +1223,7 @@ free(void *ap)
  8b1:	83 e8 08             	sub    $0x8,%eax
  8b4:	89 45 f8             	mov    %eax,-0x8(%ebp)
   for(p = freep; !(bp > p && bp < p->s.ptr); p = p->s.ptr)
- 8b7:	a1 48 0f 00 00       	mov    0xf48,%eax
+ 8b7:	a1 08 12 00 00       	mov    0x1208,%eax
  8bc:	89 45 fc             	mov    %eax,-0x4(%ebp)
  8bf:	eb 24                	jmp    8e5 <free+0x3d>
     if(p >= p->s.ptr && (bp > p || bp < p->s.ptr))
@@ -1311,7 +1311,7 @@ free(void *ap)
  97d:	89 10                	mov    %edx,(%eax)
   freep = p;
  97f:	8b 45 fc             	mov    -0x4(%ebp),%eax
- 982:	a3 48 0f 00 00       	mov    %eax,0xf48
+ 982:	a3 08 12 00 00       	mov    %eax,0x1208
 }
  987:	90                   	nop
  988:	c9                   	leave
@@ -1362,7 +1362,7 @@ morecore(uint nu)
  9db:	e8 c8 fe ff ff       	call   8a8 <free>
  9e0:	83 c4 10             	add    $0x10,%esp
   return freep;
- 9e3:	a1 48 0f 00 00       	mov    0xf48,%eax
+ 9e3:	a1 08 12 00 00       	mov    0x1208,%eax
 }
  9e8:	c9                   	leave
  9e9:	c3                   	ret
@@ -1385,18 +1385,18 @@ malloc(uint nbytes)
  9f9:	83 c0 01             	add    $0x1,%eax
  9fc:	89 45 ec             	mov    %eax,-0x14(%ebp)
   if((prevp = freep) == 0){
- 9ff:	a1 48 0f 00 00       	mov    0xf48,%eax
+ 9ff:	a1 08 12 00 00       	mov    0x1208,%eax
  a04:	89 45 f0             	mov    %eax,-0x10(%ebp)
  a07:	83 7d f0 00          	cmpl   $0x0,-0x10(%ebp)
  a0b:	75 23                	jne    a30 <malloc+0x46>
     base.s.ptr = freep = prevp = &base;
- a0d:	c7 45 f0 40 0f 00 00 	movl   $0xf40,-0x10(%ebp)
+ a0d:	c7 45 f0 00 12 00 00 	movl   $0x1200,-0x10(%ebp)
  a14:	8b 45 f0             	mov    -0x10(%ebp),%eax
- a17:	a3 48 0f 00 00       	mov    %eax,0xf48
- a1c:	a1 48 0f 00 00       	mov    0xf48,%eax
- a21:	a3 40 0f 00 00       	mov    %eax,0xf40
+ a17:	a3 08 12 00 00       	mov    %eax,0x1208
+ a1c:	a1 08 12 00 00       	mov    0x1208,%eax
+ a21:	a3 00 12 00 00       	mov    %eax,0x1200
     base.s.size = 0;
- a26:	c7 05 44 0f 00 00 00 	movl   $0x0,0xf44
+ a26:	c7 05 04 12 00 00 00 	movl   $0x0,0x1204
  a2d:	00 00 00 
   }
   for(p = prevp->s.ptr; ; prevp = p, p = p->s.ptr){
@@ -1439,14 +1439,14 @@ malloc(uint nbytes)
       }
       freep = prevp;
  a80:	8b 45 f0             	mov    -0x10(%ebp),%eax
- a83:	a3 48 0f 00 00       	mov    %eax,0xf48
+ a83:	a3 08 12 00 00       	mov    %eax,0x1208
       return (void*)(p + 1);
  a88:	8b 45 f4             	mov    -0xc(%ebp),%eax
  a8b:	83 c0 08             	add    $0x8,%eax
  a8e:	eb 3b                	jmp    acb <malloc+0xe1>
     }
     if(p == freep)
- a90:	a1 48 0f 00 00       	mov    0xf48,%eax
+ a90:	a1 08 12 00 00       	mov    0x1208,%eax
  a95:	39 45 f4             	cmp    %eax,-0xc(%ebp)
  a98:	75 1e                	jne    ab8 <malloc+0xce>
       if((p = morecore(nunits)) == 0)

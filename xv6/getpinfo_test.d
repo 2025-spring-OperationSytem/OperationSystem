@@ -1,1 +1,2 @@
-getpinfo_test.o: getpinfo_test.c types.h stat.h user.h pstat.h param.h
+getpinfo_test.o: getpinfo_test.c /usr/include/stdc-predef.h types.h \
+ stat.h user.h pstat.h param.h
