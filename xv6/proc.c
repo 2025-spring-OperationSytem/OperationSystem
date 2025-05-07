@@ -686,16 +686,27 @@ void apply_priority_boosting(void) {
     int q = kernel_pstat.priority[i];
     int waited = kernel_pstat.wait_ticks[i][q];
 
-    if (q == 0 && waited >= 500) {
+    if (q == 2 && waited >= 160) {
+      kernel_pstat.priority[i] = 3;
+      kernel_pstat.wait_ticks[i][2] = 0;
+      cprintf("[BOOST] PID %d Q2→Q3 (waited=%d)\n", kernel_pstat.pid[i], waited);
+      enqueue(&ptable.proc[i], 3);
+    } else if (q == 1 && waited >= 320) {
+      kernel_pstat.priority[i] = 2;
+      kernel_pstat.wait_ticks[i][1] = 0;
+      cprintf("[BOOST] PID %d Q1→Q2 (waited=%d)\n", kernel_pstat.pid[i], waited);
+      enqueue(&ptable.proc[i], 2);
+    } else if (q == 0 && waited >= 500) {
+      int pid = kernel_pstat.pid[i];
+      int executed_ticks = kernel_pstat.ticks[i][0];
+      int wait_ticks = kernel_pstat.wait_ticks[i][0];
+    
       kernel_pstat.priority[i] = 1;
       kernel_pstat.wait_ticks[i][0] = 0;
-      cprintf("[BOOST] PID %d Q0→Q1\n", kernel_pstat.pid[i]);
+    
+      cprintf("[BOOST] PID %d Q0→Q1 (waited=%d, ticks=%d)\n", pid, wait_ticks, executed_ticks);
+    
       enqueue(&ptable.proc[i], 1);
-    } else if ((q == 1 && waited >= 320) || (q == 2 && waited >= 160)) {
-      kernel_pstat.priority[i] = q + 1;
-      kernel_pstat.wait_ticks[i][q] = 0;
-      cprintf("[BOOST] PID %d Q%d→Q%d\n", kernel_pstat.pid[i], q, q + 1);
-      enqueue(&ptable.proc[i], q + 1);
     }
   }
 }
@@ -725,14 +736,19 @@ void run_process(struct proc* p, int q, int slice) {
   c->proc = 0;
 
   int executed = kernel_pstat.ticks[i][q];
-  cprintf("[CHECK] PID %d total ticks at Q%d = %d (slice = %d)\n", p->pid, q, executed, slice);
+  //cprintf("[CHECK] PID %d total ticks at Q%d = %d (slice = %d)\n", p->pid, q, executed, slice);
 
   if (slice != -1 && executed >= slice && q > 0) {
     kernel_pstat.priority[i] = q - 1;
     kernel_pstat.ticks[i][q] = 0;  // 현재 큐에서의 실행 시간 초기화
     cprintf("[DEMOTE] PID %d Q%d → Q%d\n", p->pid, q, q - 1);
     enqueue(p, q - 1);
+  } else if (q == 0) {
+    // Q0: FIFO → 재삽입 금지
+    cprintf("[EXIT_FIFO] PID %d finished Q0 execution (no re-enqueue)\n", p->pid);
+
   } else {
+    // 타임슬라이스 소진 안 했거나 Q0가 아닌 경우는 재삽입
     cprintf("[RE-ENQUEUE] PID %d stays in Q%d\n", p->pid, q);
     enqueue(p, q);
   }
@@ -766,7 +782,7 @@ tick_update:
   for (int i = 0; i < NPROC; i++) {
     struct proc* p = &ptable.proc[i];
     if (!kernel_pstat.inuse[i]) continue;
-    if (p->state == RUNNABLE) {
+    if (p->state == RUNNABLE && p != mycpu()->proc) {
       int q = kernel_pstat.priority[i];
       kernel_pstat.wait_ticks[i][q]++;
     }
