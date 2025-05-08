@@ -27,6 +27,7 @@ static void wakeup1(void *chan);
 
 void run_mlfq(void);
 void enqueue(struct proc *p, int level);  
+struct proc* dequeue(int level);
 
 void
 pinit(void)
@@ -261,7 +262,7 @@ exit(void)
   struct proc *curproc = myproc();
   struct proc *p;
   int fd;
-
+  
   if(curproc == initproc)
     panic("init exiting");
 
@@ -295,7 +296,13 @@ exit(void)
   //kerner_pstat 상태 제거
   int i = curproc - ptable.proc;
   kernel_pstat.inuse[i] = 0;
-
+  int q;
+  q = kernel_pstat.priority[i];
+  if (p == dequeue(q))
+  {
+    cprintf("[PROCESS EXIT] suc\n");
+  }
+   
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
   sched();
@@ -685,7 +692,6 @@ void apply_priority_boosting(void) {
     if (!kernel_pstat.inuse[i]) continue;
     int q = kernel_pstat.priority[i];
     int waited = kernel_pstat.wait_ticks[i][q];
-
     if (q == 2 && waited >= 160) {
       kernel_pstat.priority[i] = 3;
       kernel_pstat.wait_ticks[i][2] = 0;
@@ -727,7 +733,7 @@ void run_process(struct proc* p, int q, int slice) {
 
   int i = p - ptable.proc;
 
-  cprintf("[RUN_PROCESS] PID %d starts at Q%d\n", p->pid, q);
+  cprintf("[RUN_PROCESS] PID %d starts at Q%d ticks %d wait_ticks %d\n", p->pid, q,kernel_pstat.ticks[i][q], kernel_pstat.wait_ticks[i][q]);
 
   // 실제 프로세스를 실행 (문맥 전환)
   swtch(&(c->scheduler), p->context);
@@ -745,8 +751,7 @@ void run_process(struct proc* p, int q, int slice) {
     enqueue(p, q - 1);
   } else if (q == 0) {
     // Q0: FIFO → 재삽입 금지
-    cprintf("[EXIT_FIFO] PID %d finished Q0 execution (no re-enqueue)\n", p->pid);
-
+    // cprintf("[EXIT_FIFO] PID %d finished Q0 execution (no re-enqueue)\n", p->pid);
   } else {
     // 타임슬라이스 소진 안 했거나 Q0가 아닌 경우는 재삽입
     cprintf("[RE-ENQUEUE] PID %d stays in Q%d\n", p->pid, q);
@@ -769,8 +774,10 @@ void run_mlfq(void) {
         continue;
       
       // 실행할 프로세스는 dequeue
-      dequeue(q);
- 
+      if (q != 0)
+      {
+        dequeue(q);
+      }
       int slice = get_time_slice(q);
       run_process(p, q, slice);
       goto tick_update; // 한 번만 실행
@@ -782,8 +789,8 @@ tick_update:
   for (int i = 0; i < NPROC; i++) {
     struct proc* p = &ptable.proc[i];
     if (!kernel_pstat.inuse[i]) continue;
+    int q = kernel_pstat.priority[i];    
     if (p->state == RUNNABLE && p != mycpu()->proc) {
-      int q = kernel_pstat.priority[i];
       kernel_pstat.wait_ticks[i][q]++;
     }
   }
