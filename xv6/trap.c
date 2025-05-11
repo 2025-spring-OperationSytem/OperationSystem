@@ -67,7 +67,7 @@ trap(struct trapframe *tf)
     }
     //현재 실행 중인 프로세스에 대해 tick 누적
     struct proc* p = myproc();
-    if (p != 0 && p->state == RUNNING && mycpu()->sched_policy != 0) {
+    if (p != 0 && p->state == RUNNING && mycpu()->sched_policy != 0 ) {
       int idx = myproc() - ptable.proc;
       int q = kernel_pstat.priority[idx];
       kernel_pstat.ticks[idx][q]++;  //  실제 실행 시간 증가

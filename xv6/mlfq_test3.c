@@ -29,36 +29,17 @@ void print_stat() {
 }
 
 void run_policy_3() {
-  printf(1, "[DEBUG] Entered run_policy_3() - MLFQ without boosting\n");
-  sleep(1);
-
+  printf(1, "[DEBUG] Entered run_policy_3()\n");
+  setSchedPolicy(3);
   for (int i = 0; i < NPROCS; i++) {
     int pid = fork();
-    if (pid < 0) {
-      printf(1, "[ERROR] fork failed at i=%d\n", i);
-      sleep(1);
-    }
     if (pid == 0) {
-      printf(1, "[CHILD] i=%d, PID=%d\n", i, getpid());
-      sleep(1);
-      workload(10000000 * (i + 1));
+      workload(200000000 * (i + 1));      
       exit();
-    } else {
-      printf(1, "[PARENT] forked child PID=%d at i=%d\n", pid, i);
-      sleep(1);
     }
   }
-
-  printf(1, "[DEBUG] Setting sched_policy = 3 (no boosting)\n");
-  setSchedPolicy(3);
-  sleep(1);
-
-  int policy = getSchedPolicy();
-  printf(1, "[DEBUG] Current sched_policy = %d\n", policy);
-  sleep(1);
-
+  printf(1, "praents process wait\n");
   for (int i = 0; i < NPROCS; i++) wait();
-
   print_stat();
 }
 

@@ -7,10 +7,8 @@
 int workload(int n) {
   int i, j = 0;
   for (i = 0; i < n; i++) {
-    if (i % 100000 == 0) {
-      printf(1, "[CHEAT] PID %d yielding at i = %d\n", getpid(), i);
+    if (i % 1000 *(getpid()-3) * 8 == 0) {
       yield();
-      printf(1, "[CHEAT] PID %d resumed after yield at i = %d\n", getpid(), i);
     }
     j += i * j + 1;
   }
@@ -34,36 +32,17 @@ void print_stat() {
 }
 
 void run_policy_2() {
-  printf(1, "[DEBUG] Entered run_policy_2() - MLFQ without tracking (cheating possible)\n");
-  sleep(1);
-
+  printf(1, "[DEBUG] Entered run_policy_1()\n");
+  setSchedPolicy(1);
   for (int i = 0; i < NPROCS; i++) {
     int pid = fork();
-    if (pid < 0) {
-      printf(1, "[ERROR] fork failed at i=%d\n", i);
-      sleep(1);
-    }
     if (pid == 0) {
-      printf(1, "[CHILD] i=%d, PID=%d\n", i, getpid());
-      sleep(1);
-      workload(50000000 * (i + 1));
+      workload(100000 * (i + 1));      
       exit();
-    } else {
-      printf(1, "[PARENT] forked child PID=%d at i=%d\n", pid, i);
-      sleep(1);
     }
   }
-
-  printf(1, "[DEBUG] Setting sched_policy = 2 (no tracking)\n");
-  setSchedPolicy(2);
-  sleep(1);
-
-  int policy = getSchedPolicy();
-  printf(1, "[DEBUG] Current sched_policy = %d\n", policy);
-  sleep(1);
-
+  printf(1, "praents process wait\n");
   for (int i = 0; i < NPROCS; i++) wait();
-
   print_stat();
 }
 

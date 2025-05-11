@@ -671,22 +671,24 @@ dequeue(int level) {
 
 // Boosting 조건 검사
 void apply_priority_boosting(void) {
+  if(get_sched_policy() == 3)
+    return;
   for (int i = 0; i < NPROC; i++) {
     if (!kernel_pstat.inuse[i]) continue;
     int q = kernel_pstat.priority[i];
     int waited = kernel_pstat.wait_ticks[i][q];
 
-    if (q == 2 && waited >= 80) {
+    if (q == 2 && waited >= 160) {
       kernel_pstat.priority[i] = 3;
       kernel_pstat.wait_ticks[i][2] = 0;
       cprintf("[BOOST] PID %d Q2→Q3 (waited=%d)\n", kernel_pstat.pid[i], waited);
       enqueue(&ptable.proc[i], 3);
-    } else if (q == 1 && waited >= 160) {
+    } else if (q == 1 && waited >= 320) {
       kernel_pstat.priority[i] = 2;
       kernel_pstat.wait_ticks[i][1] = 0;
       cprintf("[BOOST] PID %d Q1→Q2 (waited=%d)\n", kernel_pstat.pid[i], waited);
       enqueue(&ptable.proc[i], 2);
-    } else if (q == 0 && waited >= 250) {
+    } else if (q == 0 && waited >= 500) {
       int pid = kernel_pstat.pid[i];
       int executed_ticks = kernel_pstat.ticks[i][0];
       int wait_ticks = kernel_pstat.wait_ticks[i][0];
