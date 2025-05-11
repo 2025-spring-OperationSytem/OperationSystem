@@ -98,9 +98,9 @@ allocproc(void)
 
 found:
   p->state = EMBRYO;
-  p->pid = nextpid++;
+  p->pid = nextpid;
+  nextpid++;
 
-    
   int i = p - ptable.proc; // kernel_pstat 인덱스 계산
   kernel_pstat.inuse[i] = 1;
   kernel_pstat.pid[i] = p->pid;
@@ -110,9 +110,9 @@ found:
 
   release(&ptable.lock);
 
-
   // Allocate kernel stack.
   if((p->kstack = kalloc()) == 0){
+    cprintf("[ALLOC ERROR] kstack alloc failed for PID=%d\n", p->pid);
     p->state = UNUSED;
     return 0;
   }
@@ -209,12 +209,12 @@ fork(void)
   struct proc *curproc = myproc();
 
   // Allocate process.
-  if((np = allocproc()) == 0){
+  if ((np = allocproc()) == 0) {
     return -1;
   }
 
   // Copy process state from proc.
-  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
+  if ((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0) {
     kfree(np->kstack);
     np->kstack = 0;
     np->state = UNUSED;
@@ -227,8 +227,8 @@ fork(void)
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 
-  for(i = 0; i < NOFILE; i++)
-    if(curproc->ofile[i])
+  for (i = 0; i < NOFILE; i++)
+    if (curproc->ofile[i])
       np->ofile[i] = filedup(curproc->ofile[i]);
   np->cwd = idup(curproc->cwd);
 
@@ -240,12 +240,16 @@ fork(void)
 
   np->state = RUNNABLE;
 
-  cprintf("[FORK] pid %d created, sched_policy = %d\n", np->pid, mycpu()->sched_policy);
-  if (cpus[0].sched_policy > 0){
-    kernel_pstat.priority[np - ptable.proc] = 3;
+  // MLFQ용 kernel_pstat 등록
+  int idx = np - ptable.proc;
+  kernel_pstat.inuse[idx] = 1;
+  kernel_pstat.pid[idx] = np->pid;
+  kernel_pstat.priority[idx] = 3;
+  memset(kernel_pstat.ticks[idx], 0, sizeof(kernel_pstat.ticks[idx]));
+  memset(kernel_pstat.wait_ticks[idx], 0, sizeof(kernel_pstat.wait_ticks[idx]));
+
+  if (mycpu()->sched_policy > 0)
     enqueue(np, 3);
-  }
-   
 
   release(&ptable.lock);
 
@@ -729,62 +733,59 @@ void run_process(struct proc* p, int q, int slice) {
 
   cprintf("[RUN_PROCESS] PID %d starts at Q%d\n", p->pid, q);
 
-  // 실제 프로세스를 실행 (문맥 전환)
+  // 실제 프로세스를 실행
   swtch(&(c->scheduler), p->context);
-  // 유저 공간에서 실행이 끝나고 다시 돌아옴
   switchkvm();
   c->proc = 0;
 
   int executed = kernel_pstat.ticks[i][q];
-  //cprintf("[CHECK] PID %d total ticks at Q%d = %d (slice = %d)\n", p->pid, q, executed, slice);
 
   if (slice != -1 && executed >= slice && q > 0) {
+    // 타임슬라이스 다 소모하고 Q1~Q3이면 하향 이동
     kernel_pstat.priority[i] = q - 1;
-    kernel_pstat.ticks[i][q] = 0;  // 현재 큐에서의 실행 시간 초기화
+    kernel_pstat.ticks[i][q] = 0;
     cprintf("[DEMOTE] PID %d Q%d → Q%d\n", p->pid, q, q - 1);
     enqueue(p, q - 1);
   } else if (q == 0) {
-    // Q0: FIFO → 재삽입 금지
+    // Q0는 FIFO → 절대 재삽입 X
     cprintf("[EXIT_FIFO] PID %d finished Q0 execution (no re-enqueue)\n", p->pid);
-
   } else {
-    // 타임슬라이스 소진 안 했거나 Q0가 아닌 경우는 재삽입
+    // 아직 타임슬라이스 남은 경우 → 같은 큐로 유지
     cprintf("[RE-ENQUEUE] PID %d stays in Q%d\n", p->pid, q);
     enqueue(p, q);
   }
 }
 
-
 // MLFQ 스케줄러 진입점
 void run_mlfq(void) {
-  int just_ran_pid = -1;
-
+  
   apply_priority_boosting();
-
+  
   for (int q = 3; q >= 0; q--) {
     for (int i = 0; i < NPROC; i++) {
       struct proc *p = mlfq_queues[q][i];
+      //cprintf("[MLFQ_LOOP] Q%d index %d: pid %d, state %d\n", q, i,
+      //  p ? p->pid : -1, p ? p->state : -1);
       if (p == 0 || p->state != RUNNABLE)
         continue;
-
+      
+      // 실행할 프로세스는 dequeue
       dequeue(q);
+ 
       int slice = get_time_slice(q);
       run_process(p, q, slice);
-      just_ran_pid = p->pid;
-      goto tick_update;
+      goto tick_update; // 한 번만 실행
     }
   }
 
-  tick_update:
+tick_update:
+  // wait tick 증가 (실행 안 된 RUNNABLE 프로세스만)
   for (int i = 0; i < NPROC; i++) {
     struct proc* p = &ptable.proc[i];
     if (!kernel_pstat.inuse[i]) continue;
-    if (p->state == RUNNABLE && p->pid != just_ran_pid) {
+    if (p->state == RUNNABLE && p != mycpu()->proc) {
       int q = kernel_pstat.priority[i];
       kernel_pstat.wait_ticks[i][q]++;
-      if (kernel_pstat.wait_ticks[i][q] % 10 == 0) {  // 확인용: 10tick마다 출력
-        cprintf("[WAIT] PID %d at Q%d wait_ticks = %d\n", p->pid, q, kernel_pstat.wait_ticks[i][q]);
-      }
     }
   }
 }
