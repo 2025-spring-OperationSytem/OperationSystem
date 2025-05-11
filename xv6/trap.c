@@ -71,6 +71,7 @@ trap(struct trapframe *tf)
       int idx = myproc() - ptable.proc;
       int q = kernel_pstat.priority[idx];
       kernel_pstat.ticks[idx][q]++;  //  실제 실행 시간 증가
+      kernel_pstat.wait_ticks[idx][q] = 0; // 실행된 큐의 wait_ticks 초기화화
 
       //로그 출력용
       if (kernel_pstat.ticks[idx][q] == 1 || kernel_pstat.ticks[idx][q] % 8 == 0) {

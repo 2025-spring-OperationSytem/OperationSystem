@@ -27,6 +27,8 @@ static void wakeup1(void *chan);
 
 void run_mlfq(int tracking, int boosting);
 void enqueue(struct proc *p, int level);
+int get_sched_policy(void);
+
 struct proc* dequeue(int level);
 
 void
@@ -249,8 +251,8 @@ fork(void)
   memset(kernel_pstat.ticks[idx], 0, sizeof(kernel_pstat.ticks[idx]));
   memset(kernel_pstat.wait_ticks[idx], 0, sizeof(kernel_pstat.wait_ticks[idx]));
 
-  if (mycpu()->sched_policy > 0)
-    enqueue(np, 3);
+  // if (mycpu()->sched_policy > 0)
+  //   enqueue(np, 3);
 
   release(&ptable.lock);
 
@@ -300,7 +302,13 @@ exit(void)
   //kerner_pstat 상태 제거
   int i = curproc - ptable.proc;
   kernel_pstat.inuse[i] = 0;
-
+  int q;
+  q = kernel_pstat.priority[i];
+  if (get_sched_policy() > 0)
+  {
+    dequeue(q);
+    cprintf("[PROCESS EXIT] pid: %d\n", curproc->pid);
+  }
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
   sched();
@@ -381,12 +389,12 @@ scheduler(void)
         switchkvm();
         c->proc = 0;
       }
-      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-        if(p->state == RUNNABLE && p != c->proc){
-          int i = p - ptable.proc;
-          kernel_pstat.wait_ticks[i][kernel_pstat.priority[i]]++;
-        }
-      }
+      // for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      //   if(p->state == RUNNABLE && p != c->proc){
+      //     int i = p - ptable.proc;
+      //     kernel_pstat.wait_ticks[i][kernel_pstat.priority[i]]++;
+      //   }
+      // }
     } else if (c->sched_policy == 1) {
       run_mlfq(1, 1);
     } else if (c->sched_policy == 2) {
@@ -394,7 +402,6 @@ scheduler(void)
     } else if (c->sched_policy == 3) {
       run_mlfq(1, 0);
     }
-
     release(&ptable.lock);
   }
 }
@@ -713,7 +720,7 @@ run_process(struct proc* p, int q, int slice, int tracking) {
   switchuvm(p);
   p->state = RUNNING;
   int i = p - ptable.proc;
-  cprintf("[RUN_PROCESS] PID %d starts at Q%d\n", p->pid, q);
+  // cprintf("[RUN_PROCESS] PID %d starts at Q%d\n", p->pid, q);
   swtch(&(c->scheduler), p->context);
   switchkvm();
   c->proc = 0;
@@ -724,7 +731,7 @@ run_process(struct proc* p, int q, int slice, int tracking) {
     cprintf("[DEMOTE] PID %d Q%d → Q%d\n", p->pid, q, q - 1);
     enqueue(p, q - 1);
   } else if (q == 0) {
-    cprintf("[EXIT_FIFO] PID %d finished Q0 execution (no re-enqueue)\n", p->pid);
+  //cprintf("[EXIT_FIFO] PID %d finished Q0 execution (no re-enqueue)\n", p->pid);
   } else {
     cprintf("[RE-ENQUEUE] PID %d stays in Q%d\n", p->pid, q);
     enqueue(p, q);
@@ -742,7 +749,8 @@ run_mlfq(int tracking, int boosting) {
       struct proc *p = mlfq_queues[q][i];
       if (p == 0 || p->state != RUNNABLE)
         continue;
-      dequeue(q);
+      if (q != 0)
+        dequeue(q);
       int slice = get_time_slice(q);
       run_process(p, q, slice, tracking);
       goto tick_update;

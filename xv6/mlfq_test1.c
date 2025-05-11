@@ -7,7 +7,13 @@
 
 int workload(int n) {
   int i, j = 0;
-  for (i = 0; i < n; i++) j += i * j + 1;
+  for (i = 0; i < n; i++) {
+    j += i * j + 1;
+    if (i % 1000000 == 0)
+    {
+      printf(1,"[WORRKLOAD] i = %d\n",i);
+    }
+  };
   return j;
 }
 

@@ -41,7 +41,7 @@ void run_mlfq_with_tracking_and_boosting() {
     if (pid == 0) {
       printf(1, "[CHILD] i=%d, PID=%d\n", i, getpid());
       sleep(1);
-      workload(10000000 * (i+1));
+      workload(100 * (i+1));
       exit();
     } else {
       printf(1, "[PARENT] forked child PID=%d at i=%d\n", pid, i);
