@@ -204,62 +204,62 @@ void run_policy_1() {
  1f1:	6a 01                	push   $0x1
  1f3:	e8 fe 03 00 00       	call   5f6 <sleep>
  1f8:	83 c4 10             	add    $0x10,%esp
+  setSchedPolicy(1);
+ 1fb:	83 ec 0c             	sub    $0xc,%esp
+ 1fe:	6a 01                	push   $0x1
+ 200:	e8 09 04 00 00       	call   60e <setSchedPolicy>
+ 205:	83 c4 10             	add    $0x10,%esp
   for (int i = 0; i < NPROCS; i++) {
- 1fb:	c7 45 f4 00 00 00 00 	movl   $0x0,-0xc(%ebp)
- 202:	eb 76                	jmp    27a <run_policy_1+0xa8>
+ 208:	c7 45 f4 00 00 00 00 	movl   $0x0,-0xc(%ebp)
+ 20f:	eb 76                	jmp    287 <run_policy_1+0xb5>
     int pid = fork();
- 204:	e8 55 03 00 00       	call   55e <fork>
- 209:	89 45 ec             	mov    %eax,-0x14(%ebp)
+ 211:	e8 48 03 00 00       	call   55e <fork>
+ 216:	89 45 ec             	mov    %eax,-0x14(%ebp)
     if (pid == 0) {
- 20c:	83 7d ec 00          	cmpl   $0x0,-0x14(%ebp)
- 210:	75 42                	jne    254 <run_policy_1+0x82>
+ 219:	83 7d ec 00          	cmpl   $0x0,-0x14(%ebp)
+ 21d:	75 42                	jne    261 <run_policy_1+0x8f>
       printf(1, "[CHILD] i=%d, PID=%d\n", i, getpid());
- 212:	e8 cf 03 00 00       	call   5e6 <getpid>
- 217:	50                   	push   %eax
- 218:	ff 75 f4             	push   -0xc(%ebp)
- 21b:	68 7c 0b 00 00       	push   $0xb7c
- 220:	6a 01                	push   $0x1
- 222:	e8 db 04 00 00       	call   702 <printf>
- 227:	83 c4 10             	add    $0x10,%esp
-      sleep(1);
- 22a:	83 ec 0c             	sub    $0xc,%esp
+ 21f:	e8 c2 03 00 00       	call   5e6 <getpid>
+ 224:	50                   	push   %eax
+ 225:	ff 75 f4             	push   -0xc(%ebp)
+ 228:	68 7c 0b 00 00       	push   $0xb7c
  22d:	6a 01                	push   $0x1
- 22f:	e8 c2 03 00 00       	call   5f6 <sleep>
+ 22f:	e8 ce 04 00 00       	call   702 <printf>
  234:	83 c4 10             	add    $0x10,%esp
+      sleep(1);
+ 237:	83 ec 0c             	sub    $0xc,%esp
+ 23a:	6a 01                	push   $0x1
+ 23c:	e8 b5 03 00 00       	call   5f6 <sleep>
+ 241:	83 c4 10             	add    $0x10,%esp
       workload(10000000 * (i + 1));
- 237:	8b 45 f4             	mov    -0xc(%ebp),%eax
- 23a:	83 c0 01             	add    $0x1,%eax
- 23d:	69 c0 80 96 98 00    	imul   $0x989680,%eax,%eax
- 243:	83 ec 0c             	sub    $0xc,%esp
- 246:	50                   	push   %eax
- 247:	e8 b4 fd ff ff       	call   0 <workload>
- 24c:	83 c4 10             	add    $0x10,%esp
+ 244:	8b 45 f4             	mov    -0xc(%ebp),%eax
+ 247:	83 c0 01             	add    $0x1,%eax
+ 24a:	69 c0 80 96 98 00    	imul   $0x989680,%eax,%eax
+ 250:	83 ec 0c             	sub    $0xc,%esp
+ 253:	50                   	push   %eax
+ 254:	e8 a7 fd ff ff       	call   0 <workload>
+ 259:	83 c4 10             	add    $0x10,%esp
       exit();
- 24f:	e8 12 03 00 00       	call   566 <exit>
+ 25c:	e8 05 03 00 00       	call   566 <exit>
     } else {
       printf(1, "[PARENT] forked child PID=%d at i=%d\n", pid, i);
- 254:	ff 75 f4             	push   -0xc(%ebp)
- 257:	ff 75 ec             	push   -0x14(%ebp)
- 25a:	68 94 0b 00 00       	push   $0xb94
- 25f:	6a 01                	push   $0x1
- 261:	e8 9c 04 00 00       	call   702 <printf>
- 266:	83 c4 10             	add    $0x10,%esp
-      sleep(1);
- 269:	83 ec 0c             	sub    $0xc,%esp
+ 261:	ff 75 f4             	push   -0xc(%ebp)
+ 264:	ff 75 ec             	push   -0x14(%ebp)
+ 267:	68 94 0b 00 00       	push   $0xb94
  26c:	6a 01                	push   $0x1
- 26e:	e8 83 03 00 00       	call   5f6 <sleep>
+ 26e:	e8 8f 04 00 00       	call   702 <printf>
  273:	83 c4 10             	add    $0x10,%esp
+      sleep(1);
+ 276:	83 ec 0c             	sub    $0xc,%esp
+ 279:	6a 01                	push   $0x1
+ 27b:	e8 76 03 00 00       	call   5f6 <sleep>
+ 280:	83 c4 10             	add    $0x10,%esp
   for (int i = 0; i < NPROCS; i++) {
- 276:	83 45 f4 01          	addl   $0x1,-0xc(%ebp)
- 27a:	83 7d f4 02          	cmpl   $0x2,-0xc(%ebp)
- 27e:	7e 84                	jle    204 <run_policy_1+0x32>
+ 283:	83 45 f4 01          	addl   $0x1,-0xc(%ebp)
+ 287:	83 7d f4 02          	cmpl   $0x2,-0xc(%ebp)
+ 28b:	7e 84                	jle    211 <run_policy_1+0x3f>
     }
   }
-  setSchedPolicy(1);
- 280:	83 ec 0c             	sub    $0xc,%esp
- 283:	6a 01                	push   $0x1
- 285:	e8 84 03 00 00       	call   60e <setSchedPolicy>
- 28a:	83 c4 10             	add    $0x10,%esp
   sleep(1);
  28d:	83 ec 0c             	sub    $0xc,%esp
  290:	6a 01                	push   $0x1

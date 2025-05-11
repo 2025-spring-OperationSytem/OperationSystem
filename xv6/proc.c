@@ -251,8 +251,8 @@ fork(void)
   memset(kernel_pstat.ticks[idx], 0, sizeof(kernel_pstat.ticks[idx]));
   memset(kernel_pstat.wait_ticks[idx], 0, sizeof(kernel_pstat.wait_ticks[idx]));
 
-  // if (mycpu()->sched_policy > 0)
-  //   enqueue(np, 3);
+  if (mycpu()->sched_policy > 0)
+    enqueue(np, 3);
 
   release(&ptable.lock);
 
@@ -607,7 +607,7 @@ void mlfq_enqueue_all_runnable(void) {
   for (int i = 0; i < NPROC; i++) {
     if (!kernel_pstat.inuse[i]) continue;
     struct proc *p = &ptable.proc[i];
-    if (p->state == RUNNABLE) {
+    if (p->state == RUNNABLE || p->state == RUNNING) {
       int q = kernel_pstat.priority[i];
       enqueue(p, q);
       cprintf("[AUTO-ENQUEUE] PID %d -> Q%d\n", p->pid, q);
@@ -733,7 +733,7 @@ run_process(struct proc* p, int q, int slice, int tracking) {
   } else if (q == 0) {
   //cprintf("[EXIT_FIFO] PID %d finished Q0 execution (no re-enqueue)\n", p->pid);
   } else {
-    cprintf("[RE-ENQUEUE] PID %d stays in Q%d\n", p->pid, q);
+  //  cprintf("[RE-ENQUEUE] PID %d stays in Q%d\n", p->pid, q);
     enqueue(p, q);
   }
 }

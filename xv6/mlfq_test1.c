@@ -34,6 +34,7 @@ void print_stat() {
 void run_policy_1() {
   printf(1, "[DEBUG] Entered run_policy_1()\n");
   sleep(1);  
+  setSchedPolicy(1);
   for (int i = 0; i < NPROCS; i++) {
     int pid = fork();
     if (pid == 0) {
@@ -46,7 +47,6 @@ void run_policy_1() {
       sleep(1);
     }
   }
-  setSchedPolicy(1);
   sleep(1);
   for (int i = 0; i < NPROCS; i++) wait();
   print_stat();
