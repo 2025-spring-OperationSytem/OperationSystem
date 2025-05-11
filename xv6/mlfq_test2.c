@@ -7,11 +7,16 @@
 int workload(int n) {
   int i, j = 0;
   for (i = 0; i < n; i++) {
+    if (i % 100000 == 0) {
+      printf(1, "[CHEAT] PID %d yielding at i = %d\n", getpid(), i);
+      yield();
+      printf(1, "[CHEAT] PID %d resumed after yield at i = %d\n", getpid(), i);
+    }
     j += i * j + 1;
-    // 치팅 가능한 버전이므로 yield를 통해 boost 없이 우선순위 유지 가능
   }
   return j;
 }
+
 
 void print_stat() {
   struct pstat ps;
@@ -41,7 +46,7 @@ void run_policy_2() {
     if (pid == 0) {
       printf(1, "[CHILD] i=%d, PID=%d\n", i, getpid());
       sleep(1);
-      workload(10000000 * (i + 1));
+      workload(50000000 * (i + 1));
       exit();
     } else {
       printf(1, "[PARENT] forked child PID=%d at i=%d\n", pid, i);
