@@ -28,26 +28,34 @@ void print_stat() {
 void run_policy_1() {
   printf(1, "[DEBUG] Entered run_policy_1()\n");
   sleep(1);  
+
   for (int i = 0; i < NPROCS; i++) {
     int pid = fork();
-    if (pid == 0) {
-      printf(1, "[CHILD] i=%d, PID=%d\n", i, getpid());
-      sleep(1);
-      workload(10000000 * (i + 1));
+    if (pid == 0) { 
+      int mypid = getpid();
+      printf(1, "[CHILD] i=%d, PID=%d started\n", i, mypid);
+
+      workload(50000000 * (i + 1));  
+
+      printf(1, "[CHILD] PID=%d exiting\n", mypid);
       exit();
     } else {
       printf(1, "[PARENT] forked child PID=%d at i=%d\n", pid, i);
       sleep(1);
     }
   }
-  setSchedPolicy(1);
+
+  setSchedPolicy(1);  // policy 1: tracking + boosting
   sleep(1);
+
   for (int i = 0; i < NPROCS; i++) wait();
+
   print_stat();
 }
 
 int main(void) {
   printf(1, "\n===== [POLICY 1: tracking + boosting] =====\n");
   run_policy_1();
+  printf(1, "\n===== [POLICY 1: exit] =====\n");
   exit();
 }

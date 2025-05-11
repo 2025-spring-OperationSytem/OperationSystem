@@ -670,6 +670,12 @@ dequeue(int level) {
 void apply_priority_boosting(void) {
   for (int i = 0; i < NPROC; i++) {
     if (!kernel_pstat.inuse[i]) continue;
+    struct proc* p = &ptable.proc[i];
+
+    // BOOST 조건: 실행 가능한 프로세스만
+    if (p->state != RUNNABLE) continue;
+    if (p->state == ZOMBIE || p->state == UNUSED) continue;
+
     int q = kernel_pstat.priority[i];
     int waited = kernel_pstat.wait_ticks[i][q];
 
@@ -677,26 +683,24 @@ void apply_priority_boosting(void) {
       kernel_pstat.priority[i] = 3;
       kernel_pstat.wait_ticks[i][2] = 0;
       cprintf("[BOOST] PID %d Q2→Q3 (waited=%d)\n", kernel_pstat.pid[i], waited);
-      enqueue(&ptable.proc[i], 3);
+      enqueue(p, 3);
     } else if (q == 1 && waited >= 320) {
       kernel_pstat.priority[i] = 2;
       kernel_pstat.wait_ticks[i][1] = 0;
       cprintf("[BOOST] PID %d Q1→Q2 (waited=%d)\n", kernel_pstat.pid[i], waited);
-      enqueue(&ptable.proc[i], 2);
+      enqueue(p, 2);
     } else if (q == 0 && waited >= 500) {
-      int pid = kernel_pstat.pid[i];
-      int executed_ticks = kernel_pstat.ticks[i][0];
-      int wait_ticks = kernel_pstat.wait_ticks[i][0];
-    
       kernel_pstat.priority[i] = 1;
       kernel_pstat.wait_ticks[i][0] = 0;
-    
-      cprintf("[BOOST] PID %d Q0→Q1 (waited=%d, ticks=%d)\n", pid, wait_ticks, executed_ticks);
-    
-      enqueue(&ptable.proc[i], 1);
+      cprintf("[BOOST] PID %d Q0→Q1 (waited=%d, ticks=%d)\n",
+              kernel_pstat.pid[i],
+              waited,
+              kernel_pstat.ticks[i][0]);
+      enqueue(p, 1);
     }
   }
 }
+
 
 // Time slice 계산
 int get_time_slice(int level) {

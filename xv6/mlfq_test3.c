@@ -42,6 +42,7 @@ void run_policy_3() {
       printf(1, "[CHILD] i=%d, PID=%d\n", i, getpid());
       sleep(1);
       workload(10000000 * (i + 1));
+      sleep(100);
       exit();
     } else {
       printf(1, "[PARENT] forked child PID=%d at i=%d\n", pid, i);
