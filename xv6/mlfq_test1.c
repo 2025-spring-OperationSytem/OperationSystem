@@ -9,10 +9,6 @@ int workload(int n) {
   int i, j = 0;
   for (i = 0; i < n; i++) {
     j += i * j + 1;
-    if (i % 1000000 == 0)
-    {
-      printf(1,"[WORRKLOAD] i = %d\n",i);
-    }
   };
   return j;
 }
@@ -33,21 +29,15 @@ void print_stat() {
 
 void run_policy_1() {
   printf(1, "[DEBUG] Entered run_policy_1()\n");
-  sleep(1);  
   setSchedPolicy(1);
   for (int i = 0; i < NPROCS; i++) {
     int pid = fork();
     if (pid == 0) {
-      printf(1, "[CHILD] i=%d, PID=%d\n", i, getpid());
-      sleep(1);
-      workload(10000000 * (i + 1));
+      workload(200000000 * (i + 1));      
       exit();
-    } else {
-      printf(1, "[PARENT] forked child PID=%d at i=%d\n", pid, i);
-      sleep(1);
     }
   }
-  sleep(1);
+  printf(1, "praents process wait\n");
   for (int i = 0; i < NPROCS; i++) wait();
   print_stat();
 }

@@ -173,10 +173,6 @@ userinit(void)
   acquire(&ptable.lock);
 
   p->state = RUNNABLE;
-
-  if (mycpu()->sched_policy > 0)
-  enqueue(p, 3);
-
   release(&ptable.lock);
 }
 
@@ -268,7 +264,7 @@ exit(void)
   struct proc *curproc = myproc();
   struct proc *p;
   int fd;
-
+  
   if(curproc == initproc)
     panic("init exiting");
 
@@ -301,7 +297,6 @@ exit(void)
 
   //kerner_pstat 상태 제거
   int i = curproc - ptable.proc;
-  kernel_pstat.inuse[i] = 0;
   int q;
   q = kernel_pstat.priority[i];
   if (get_sched_policy() > 0)
@@ -509,10 +504,11 @@ static void
 wakeup1(void *chan)
 {
   struct proc *p;
-
+  enqueue(chan,3);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+    if(p->state == SLEEPING && p->chan == chan){
       p->state = RUNNABLE;
+    }
 }
 
 // Wake up all processes sleeping on chan.
@@ -610,7 +606,7 @@ void mlfq_enqueue_all_runnable(void) {
     if (p->state == RUNNABLE || p->state == RUNNING) {
       int q = kernel_pstat.priority[i];
       enqueue(p, q);
-      cprintf("[AUTO-ENQUEUE] PID %d -> Q%d\n", p->pid, q);
+      //cprintf("[AUTO-ENQUEUE] PID %d -> Q%d\n", p->pid, q);
     }
   }
   release(&ptable.lock);
@@ -680,17 +676,17 @@ void apply_priority_boosting(void) {
     int q = kernel_pstat.priority[i];
     int waited = kernel_pstat.wait_ticks[i][q];
 
-    if (q == 2 && waited >= 160) {
+    if (q == 2 && waited >= 80) {
       kernel_pstat.priority[i] = 3;
       kernel_pstat.wait_ticks[i][2] = 0;
       cprintf("[BOOST] PID %d Q2→Q3 (waited=%d)\n", kernel_pstat.pid[i], waited);
       enqueue(&ptable.proc[i], 3);
-    } else if (q == 1 && waited >= 320) {
+    } else if (q == 1 && waited >= 160) {
       kernel_pstat.priority[i] = 2;
       kernel_pstat.wait_ticks[i][1] = 0;
       cprintf("[BOOST] PID %d Q1→Q2 (waited=%d)\n", kernel_pstat.pid[i], waited);
       enqueue(&ptable.proc[i], 2);
-    } else if (q == 0 && waited >= 500) {
+    } else if (q == 0 && waited >= 250) {
       int pid = kernel_pstat.pid[i];
       int executed_ticks = kernel_pstat.ticks[i][0];
       int wait_ticks = kernel_pstat.wait_ticks[i][0];
@@ -728,7 +724,6 @@ run_process(struct proc* p, int q, int slice, int tracking) {
   if (slice != -1 && kernel_pstat.ticks[i][q] >= slice && q > 0) {
     kernel_pstat.priority[i] = q - 1;
     kernel_pstat.ticks[i][q] = 0;
-    cprintf("[DEMOTE] PID %d Q%d → Q%d\n", p->pid, q, q - 1);
     enqueue(p, q - 1);
   } else if (q == 0) {
   //cprintf("[EXIT_FIFO] PID %d finished Q0 execution (no re-enqueue)\n", p->pid);

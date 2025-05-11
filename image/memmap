@@ -3,8 +3,8 @@
 |  0 | 7 EfiConventionalMemory      | 00000000 | 00000000 |   87 |        F |
 |  1 | 4 EfiBootServicesData        | 00087000 | 00000000 |    1 |        F |
 |  2 | 7 EfiConventionalMemory      | 00088000 | 00000000 |   18 |        F |
-|  3 | 2 EfiLoaderData              | 00100000 | 00000000 |   9B |        F |
-|  4 | 7 EfiConventionalMemory      | 0019B000 | 00000000 |  665 |        F |
+|  3 | 2 EfiLoaderData              | 00100000 | 00000000 |   9A |        F |
+|  4 | 7 EfiConventionalMemory      | 0019A000 | 00000000 |  666 |        F |
 |  5 | A EfiACPIMemoryNVS           | 00800000 | 00000000 |    8 |        F |
 |  6 | 7 EfiConventionalMemory      | 00808000 | 00000000 |    3 |        F |
 |  7 | A EfiACPIMemoryNVS           | 0080B000 | 00000000 |    1 |        F |
@@ -18,8 +18,8 @@
 | 15 | 7 EfiConventionalMemory      | 7DFDD000 | 00000000 |    1 |        F |
 | 16 | 2 EfiLoaderData              | 7DFDE000 | 00000000 |    3 |        F |
 | 17 | 4 EfiBootServicesData        | 7DFE1000 | 00000000 |   19 |        F |
-| 18 | 7 EfiConventionalMemory      | 7DFFA000 | 00000000 |    1 |        F |
-| 19 | 4 EfiBootServicesData        | 7DFFB000 | 00000000 |  4AB |        F |
+| 18 | 7 EfiConventionalMemory      | 7DFFA000 | 00000000 |    2 |        F |
+| 19 | 4 EfiBootServicesData        | 7DFFC000 | 00000000 |  4AA |        F |
 | 20 | 3 EfiBootServicesCode        | 7E4A6000 | 00000000 |   B4 |        F |
 | 21 | 4 EfiBootServicesData        | 7E55A000 | 00000000 |   30 |        F |
 | 22 | 3 EfiBootServicesCode        | 7E58A000 | 00000000 |   B1 |        F |

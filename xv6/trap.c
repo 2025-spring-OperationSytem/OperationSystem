@@ -75,8 +75,8 @@ trap(struct trapframe *tf)
 
       //로그 출력용
       if (kernel_pstat.ticks[idx][q] == 1 || kernel_pstat.ticks[idx][q] % 8 == 0) {
-        cprintf("[TIMER] PID %d ticked on Q%d, total = %d\n",
-                myproc()->pid, q, kernel_pstat.ticks[idx][q]);
+        // cprintf("[TIMER] PID %d ticked on Q%d, total = %d\n",
+        //         myproc()->pid, q, kernel_pstat.ticks[idx][q]);
       }
     }
 
