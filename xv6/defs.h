@@ -120,6 +120,9 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+void            run_mlfq(int tracking, int boosting);
+void            enqueue(struct proc *p, int level);
+struct proc*    dequeue(int level);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

@@ -194,7 +194,9 @@ UPROGS=\
 	_zombie\
 	_hello\
 	_getpinfo_test\
-	_mlfq_test\
+	_mlfq_test1\
+	_mlfq_test2\
+  	_mlfq_test3\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

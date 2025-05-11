@@ -7,10 +7,10 @@
 #include "proc.h"
 #include "spinlock.h"
 #include "debug.h"
-
 #include "pstat.h"
-struct pstat kernel_pstat;
 
+struct pstat kernel_pstat;
+struct proc* mlfq_queues[4][NPROC];
 
 struct {
   struct spinlock lock;
@@ -25,8 +25,9 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
-void run_mlfq(void);
-void enqueue(struct proc *p, int level);  
+void run_mlfq(int tracking, int boosting);
+void enqueue(struct proc *p, int level);
+struct proc* dequeue(int level);
 
 void
 pinit(void)
@@ -364,48 +365,37 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
+
   for(;;){
-    // Enable interrupts on this processor.
     sti();
-
-    // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    
 
-    if (mycpu()->sched_policy == 0) {
-      // Round Robin 스케줄링
+    if (c->sched_policy == 0) {
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
         if(p->state != RUNNABLE)
           continue;
-        // Switch to chosen process.  It is the process's job
-        // to release ptable.lock and then reacquire it
-        // before jumping back to us.
         c->proc = p;
         switchuvm(p);
         p->state = RUNNING;
-
         swtch(&(c->scheduler), p->context);
         switchkvm();
-
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
         c->proc = 0;
       }
-      // wait_ticks 누적
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
         if(p->state == RUNNABLE && p != c->proc){
           int i = p - ptable.proc;
           kernel_pstat.wait_ticks[i][kernel_pstat.priority[i]]++;
         }
       }
-    } else {
-      // TODO: MLFQ로 넘기기
-      run_mlfq();
-    }  
+    } else if (c->sched_policy == 1) {
+      run_mlfq(1, 1);
+    } else if (c->sched_policy == 2) {
+      run_mlfq(0, 1);
+    } else if (c->sched_policy == 3) {
+      run_mlfq(1, 0);
+    }
 
     release(&ptable.lock);
-
   }
 }
 
@@ -650,33 +640,26 @@ int q_front[4] = {0};
 int q_back[4] = {0};
 
 // Enqueue 함수
-void enqueue(struct proc *p, int level) {
-  for (int i = 0; i < NPROC; i++) {
-    if (mlfq_queues[level][i] == p) {
-      //cprintf("[ENQUEUE] DUP PID %d already in Q%d\n", p->pid, level);
-      return;
-    }
-  }
-  for (int i = 0; i < NPROC; i++) {
+void
+enqueue(struct proc *p, int level) {
+  for (int i = 0; i < NPROC; i++)
+    if (mlfq_queues[level][i] == p) return;
+  for (int i = 0; i < NPROC; i++)
     if (mlfq_queues[level][i] == 0) {
       mlfq_queues[level][i] = p;
-      //cprintf("[ENQUEUE] PID %d → Q%d (inserted)\n", p->pid, level);
       return;
     }
-  }
-  //cprintf("[ENQUEUE] Failed: Q%d full\n", level);
 }
 
-struct proc* dequeue(int level) {
+struct proc*
+dequeue(int level) {
   struct proc* p = 0;
-
   for (int i = 0; i < NPROC; i++) {
-    if (mlfq_queues[level][i] != 0) {
+    if (mlfq_queues[level][i]) {
       p = mlfq_queues[level][i];
       for (int j = i; j < NPROC - 1; j++)
-        mlfq_queues[level][j] = mlfq_queues[level][j + 1];
+        mlfq_queues[level][j] = mlfq_queues[level][j+1];
       mlfq_queues[level][NPROC - 1] = 0;
-      //cprintf("[DEQUEUE] PID %d from Q%d\n", p->pid, level);
       break;
     }
   }
@@ -723,63 +706,51 @@ int get_time_slice(int level) {
   return -1; // FIFO (Q0)
 }
 
-void run_process(struct proc* p, int q, int slice) {
+void
+run_process(struct proc* p, int q, int slice, int tracking) {
   struct cpu *c = mycpu();
   c->proc = p;
   switchuvm(p);
   p->state = RUNNING;
-
   int i = p - ptable.proc;
-
   cprintf("[RUN_PROCESS] PID %d starts at Q%d\n", p->pid, q);
-
-  // 실제 프로세스를 실행
   swtch(&(c->scheduler), p->context);
   switchkvm();
   c->proc = 0;
-
-  int executed = kernel_pstat.ticks[i][q];
-
-  if (slice != -1 && executed >= slice && q > 0) {
-    // 타임슬라이스 다 소모하고 Q1~Q3이면 하향 이동
+  if (tracking) kernel_pstat.ticks[i][q]++;
+  if (slice != -1 && kernel_pstat.ticks[i][q] >= slice && q > 0) {
     kernel_pstat.priority[i] = q - 1;
     kernel_pstat.ticks[i][q] = 0;
     cprintf("[DEMOTE] PID %d Q%d → Q%d\n", p->pid, q, q - 1);
     enqueue(p, q - 1);
   } else if (q == 0) {
-    // Q0는 FIFO → 절대 재삽입 X
     cprintf("[EXIT_FIFO] PID %d finished Q0 execution (no re-enqueue)\n", p->pid);
   } else {
-    // 아직 타임슬라이스 남은 경우 → 같은 큐로 유지
     cprintf("[RE-ENQUEUE] PID %d stays in Q%d\n", p->pid, q);
     enqueue(p, q);
   }
 }
 
 // MLFQ 스케줄러 진입점
-void run_mlfq(void) {
-  
-  apply_priority_boosting();
-  
+void
+run_mlfq(int tracking, int boosting) {
+  if (boosting)
+    apply_priority_boosting();
+
   for (int q = 3; q >= 0; q--) {
     for (int i = 0; i < NPROC; i++) {
       struct proc *p = mlfq_queues[q][i];
-      //cprintf("[MLFQ_LOOP] Q%d index %d: pid %d, state %d\n", q, i,
-      //  p ? p->pid : -1, p ? p->state : -1);
       if (p == 0 || p->state != RUNNABLE)
         continue;
-      
-      // 실행할 프로세스는 dequeue
       dequeue(q);
- 
       int slice = get_time_slice(q);
-      run_process(p, q, slice);
-      goto tick_update; // 한 번만 실행
+      run_process(p, q, slice, tracking);
+      goto tick_update;
     }
   }
 
 tick_update:
-  // wait tick 증가 (실행 안 된 RUNNABLE 프로세스만)
+  if (!tracking) return;
   for (int i = 0; i < NPROC; i++) {
     struct proc* p = &ptable.proc[i];
     if (!kernel_pstat.inuse[i]) continue;
