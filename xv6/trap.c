@@ -57,16 +57,6 @@ trap(struct trapframe *tf)
     }
     lapiceoi();
 
-    // 여기서부터 코드 시작
-    // 현재 실행하고 있는 프로세스 호출
-    struct proc* p = myproc();
-
-    // 커널 모드에서 동작 && 프로세스 존재 && 스케줄러가 존재(uthread_init()에서 설정)
-    if ((tf->cs&3) == 0 && p != 0 && p->scheduler != 0 /*&& ticks % 5 == 0*/ ) {
-                                                       // 5ms마다 스케줄링
-      // eip를 uthread의 scheduler의 주소로 설정
-      p->tf->eip = (uint)p->scheduler;
-    }
 
     break;
   case T_IRQ0 + IRQ_IDE:
@@ -93,6 +83,29 @@ trap(struct trapframe *tf)
             cpuid(), tf->cs, tf->eip);
     lapiceoi();
     break;
+  case T_PGFLT:
+    cprintf("[PAGE FAULT IN]\n");
+    pde_t* pgdir;
+    uint va;
+    struct proc* p;
+    char *mem;
+    // va = 페이지 폴트가 난 가상 주소의 페이지 시작 주소
+    va = PGROUNDDOWN(rcr2());
+    cprintf("[PAGE FAULT] va %x \n",va);
+
+    p = myproc();
+    pgdir = p->pgdir;
+    mem = kalloc();
+    memset(mem, 0, PGSIZE);
+
+    // va 페이지 테이블에 매핑
+    // 페이지 테이블 관련 처리는 mappages 안에서 자동으로 처리해줌
+    mappages(pgdir, (void*)(va - PGSIZE), PGSIZE, V2P(mem), PTE_W|PTE_U|PTE_P);
+
+    // flush
+    switchuvm(p);
+    break;
+
 
   //PAGEBREAK: 13
   default:

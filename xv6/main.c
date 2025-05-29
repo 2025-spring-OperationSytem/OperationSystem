@@ -45,7 +45,6 @@ main(void)
   arp_scan();
   //i8254_recv();
   userinit();      // first user process
-
   mpmain();        // finish this processor's setup
 }
 

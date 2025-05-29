@@ -23,3 +23,4 @@
 
 // uthread.c에서 호출하는 시스템콜
 #define SYS_uthread_init 22
+#define SYS_printpt 23

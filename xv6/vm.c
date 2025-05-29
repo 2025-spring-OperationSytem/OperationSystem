@@ -35,7 +35,7 @@ seginit(void)
 // Return the address of the PTE in page table pgdir
 // that corresponds to virtual address va.  If alloc!=0,
 // create any required page table pages.
-static pte_t *
+/*static 전역에서 사용해야 함*/ pte_t *
 walkpgdir(pde_t *pgdir, const void *va, int alloc)
 {
   pde_t *pde;
@@ -60,7 +60,7 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
 // Create PTEs for virtual addresses starting at va that refer to
 // physical addresses starting at pa. va and size might not
 // be page-aligned.
-static int
+/*static 전역에서 사용해야 함*/ int
 mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 {
   char *a, *last;
@@ -229,6 +229,8 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
 int
 allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 {
+  cprintf("[allocuvm] in \n");
+  cprintf("[allocuvm] oldsz %x newsz %x\n",oldsz, newsz);
   char *mem;
   uint a;
 
@@ -327,14 +329,18 @@ copyuvm(pde_t *pgdir, uint sz)
   pte_t *pte;
   uint pa, i, flags;
   char *mem;
-
+  
   if((d = setupkvm()) == 0)
     return 0;
-  for(i = 0; i < sz; i += PGSIZE){
+    // 스택을 힙 영역으로 옮겼으니 위에서 부터 내려와야 한다.
+    // 힙 영역까지의 페이지 복사
+  for(i = 0; i < KERNBASE; i += PGSIZE){
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
-      panic("copyuvm: pte should exist");
-    if(!(*pte & PTE_P))
-      panic("copyuvm: page not present");
+      continue;
+    if(!(*pte & PTE_P)){
+      continue;
+    }
+    cprintf("[copyuvm] i %x\n",i);
     pa = PTE_ADDR(*pte);
     flags = PTE_FLAGS(*pte);
     if((mem = kalloc()) == 0)
@@ -342,7 +348,9 @@ copyuvm(pde_t *pgdir, uint sz)
     memmove(mem, (char*)P2V(pa), PGSIZE);
     if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0)
       goto bad;
-  }
+  }  
+
+  cprintf("[copyuvm] complete\n");
   return d;
 
 bad:

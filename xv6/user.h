@@ -25,6 +25,7 @@ int sleep(int);
 int uptime(void);
 // uthread.c에서 호출하는 함수
 int uthread_init(int address);
+int printpt(int pid);
 
 // ulib.c
 int stat(char*, struct stat*);

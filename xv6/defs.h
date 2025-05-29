@@ -9,6 +9,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+typedef uint pte_t;
 
 // bio.c
 void            binit(void);
@@ -122,6 +123,7 @@ void            wakeup(void*);
 void            yield(void);
 // 전역함수로 선언
 int				uthread_init(int address);
+int             printpt(int pid);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -188,6 +190,9 @@ void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
 
+// 전역에서 사용하기 위해 추가
+pte_t*         walkpgdir(pde_t *pgdir, const void *va, int alloc);
+int             mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

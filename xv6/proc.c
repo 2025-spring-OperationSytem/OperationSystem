@@ -78,7 +78,7 @@ allocproc(void)
 {
   struct proc *p;
   char *sp;
-
+  cprintf("[allocproc] in\n");
   acquire(&ptable.lock);
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
@@ -125,6 +125,7 @@ found:
 void
 userinit(void)
 {
+  cprintf("[userinit] in \n");
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
@@ -164,6 +165,7 @@ userinit(void)
 int
 growproc(int n)
 {
+  cprintf("[growproc] in\n");
   uint sz;
   struct proc *curproc = myproc();
 
@@ -176,6 +178,7 @@ growproc(int n)
       return -1;
   }
   curproc->sz = sz;
+  cprintf("[growproc] sz %x\n",sz);
   switchuvm(curproc);
   return 0;
 }
@@ -193,8 +196,8 @@ fork(void)
   // Allocate process.
   if((np = allocproc()) == 0){
     return -1;
-  }
-
+  } 
+  cprintf("[fork] curproc->sz %x\n",curproc->sz);
   // Copy process state from proc.
   if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
     kfree(np->kstack);
@@ -208,7 +211,6 @@ fork(void)
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
-
   for(i = 0; i < NOFILE; i++)
     if(curproc->ofile[i])
       np->ofile[i] = filedup(curproc->ofile[i]);
@@ -223,7 +225,7 @@ fork(void)
   np->state = RUNNABLE;
 
   release(&ptable.lock);
-
+  cprintf("[FORK] end\n");
   return pid;
 }
 
@@ -348,7 +350,6 @@ scheduler(void)
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
-
       swtch(&(c->scheduler), p->context);
       switchkvm();
 
@@ -547,4 +548,37 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+// 페이지 테이블 출력
+int printpt(int pid){
+  struct proc* p;
+  
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if (p->pid == pid)
+      break;
+  }
+  if (p == 0){
+    cprintf("[printpt] invaild proccess\n");
+    return -1;
+  }
+  
+  pde_t* pgdir = p->pgdir;
+  uint va;
+  // walkpgdir은 pgdir에서 va(가상주소)가 위치한 페이지 테이블 엔트리를 반환한다.
+  cprintf("START PAGE TABLE (pid %d) \n", pid);
+  // 페이지 테이블 엔트리를 한 줄씩 출력
+  // xv6에서는 pagesize를 4KB로 설정 PGSIZE == 4096 임
+  for (va = 0; va < KERNBASE; va += PGSIZE)
+  {
+    // va가 속한 페이지 테이블 엔트리
+    pte_t* pte = walkpgdir(pgdir, (void*) va, 0);
+    // pte가 유효하지 않으면 패스
+    if (!(*pte & PTE_P) || pte == 0) continue;
+    cprintf("pte: %x\n",pte);
+    cprintf("%d P %c %c %x\n", (va / PGSIZE), (*pte & PTE_U)?'U':'K' , 
+      (*pte & PTE_W)?'W':'-', PTE_ADDR(*pte) >> 12); 
+  }
+  cprintf("END PAGE TABLE\n");
+  return 0;
 }

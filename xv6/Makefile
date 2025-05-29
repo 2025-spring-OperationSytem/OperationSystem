@@ -193,7 +193,10 @@ UPROGS=\
 	_usertests\
 	_wc\
 	_zombie\
-	_uthread1
+	_uthread1\
+	_memtest\
+	_recurse\
+	_lazytest
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

@@ -62,11 +62,19 @@ exec(char *path, char **argv)
 
   // Allocate two pages at the next page boundary.
   // Make the first inaccessible.  Use the second as the user stack.
-  sz = PGROUNDUP(sz);
-  if((sz = allocuvm(pgdir, sz, sz + 2*PGSIZE)) == 0)
+  cprintf("[exec] sz %x",sz);
+  // sz를 커널 베이스로 이동 페이지를 할당해야 하기 때문에 그 크기만큼 빼줌
+  // 2*PGSIZE로 하면 페이지의 끝 주소가 커널 베이스가 되기 때문에 한단계 더 내린다.
+  sz = PGROUNDDOWN(KERNBASE - 3*PGSIZE);
+  // 커널 베이스에서 PGSIZE만큼 할당
+  if((sz = allocuvm(pgdir, sz, sz + 2 * PGSIZE)) == 0)
     goto bad;
-  clearpteu(pgdir, (char*)(sz - 2*PGSIZE));
+  cprintf("[exec] sz %x\n", sz);
+  // 스택 포인터를 sz로
   sp = sz;
+  sz = PGROUNDUP(0xb98)+1;
+  cprintf("[exec] allocuvm complete\n");
+
 
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
@@ -101,9 +109,11 @@ exec(char *path, char **argv)
   curproc->tf->esp = sp;
   switchuvm(curproc);
   freevm(oldpgdir);
+  cprintf("[exec] end\n");
   return 0;
 
  bad:
+  cprintf("bad \n");
   if(pgdir)
     freevm(pgdir);
   if(ip){
