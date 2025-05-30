@@ -332,20 +332,31 @@ copyuvm(pde_t *pgdir, uint sz)
   
   if((d = setupkvm()) == 0)
     return 0;
-    // 스택을 힙 영역으로 옮겼으니 위에서 부터 내려와야 한다.
-    // 힙 영역까지의 페이지 복사
+    // 스택을 힙 영역으로 옮겼으니 힙 영역까지의 페이지 복사
+    // text, data 영역 0xb98까지 stack 영역 0xb98+ 2*PGSIZE까지
+    // heap 영역 stack영역 위부터 kernbase까지
   for(i = 0; i < KERNBASE; i += PGSIZE){
+    
+    // 스택을 힙 영역의 맨 위에 할당했기 때문에 kernbase까지 복사를 해야하는데
+    // 할당되지 않은 페이지, 유효하지 않은 페이지는 복사하지 않고 지나감
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
       continue;
     if(!(*pte & PTE_P)){
       continue;
     }
     cprintf("[copyuvm] i %x\n",i);
+
+    // PTE_ADDR 페이지 테이블 엔트리에서 물리 주소 부분
+    // PTE_FLAGS flag 부분 추출
     pa = PTE_ADDR(*pte);
     flags = PTE_FLAGS(*pte);
+
+    // 페이지를 복사할 물리 주소 할당
     if((mem = kalloc()) == 0)
       goto bad;
+    // 현재 페이지의 물리 주소인 pa를  mem에 복사
     memmove(mem, (char*)P2V(pa), PGSIZE);
+    // 현재 가상주소에 복사받은 mem을 매핑
     if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0)
       goto bad;
   }  

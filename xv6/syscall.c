@@ -17,7 +17,8 @@
 int
 fetchint(uint addr, int *ip)
 {
-
+  // sz가 stack영역은 포함하지 않게 설정되었기 때문에 kernbase로 변경
+  // fetchstr, argptr도 동일
   if(addr >= KERNBASE || addr+4 >= KERNBASE)
     return -1;
   *ip = *(int*)(addr);
@@ -102,6 +103,7 @@ extern int sys_write(void);
 extern int sys_uptime(void);
 // sysproc.c에 선언되어있는 함수 호출
 extern int sys_uthread_init(void);
+// 페이지 테이블 출력 함수
 extern int sys_printpt(void);
 // 아래에서 system call로 호출하는 함수들을 선언한다.
 

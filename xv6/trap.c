@@ -83,6 +83,8 @@ trap(struct trapframe *tf)
             cpuid(), tf->cs, tf->eip);
     lapiceoi();
     break;
+  
+    // page fault 발생 시 이 블록 실행
   case T_PGFLT:
     cprintf("[PAGE FAULT IN]\n");
     pde_t* pgdir;
@@ -95,12 +97,16 @@ trap(struct trapframe *tf)
 
     p = myproc();
     pgdir = p->pgdir;
-    mem = kalloc();
+
+    // 새 페이지를 할당할 물리 주소 할당
+    if ((mem = kalloc()) == 0)
+      panic("Out of memory");
+    
     memset(mem, 0, PGSIZE);
 
     // va 페이지 테이블에 매핑
     // 페이지 테이블 관련 처리는 mappages 안에서 자동으로 처리해줌
-    mappages(pgdir, (void*)(va - PGSIZE), PGSIZE, V2P(mem), PTE_W|PTE_U|PTE_P);
+    mappages(pgdir, (void*)va, PGSIZE, V2P(mem), PTE_W|PTE_U|PTE_P);
 
     // flush
     switchuvm(p);

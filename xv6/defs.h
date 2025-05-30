@@ -9,6 +9,8 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+
+// walkpgdir의 리턴 자료형
 typedef uint pte_t;
 
 // bio.c
