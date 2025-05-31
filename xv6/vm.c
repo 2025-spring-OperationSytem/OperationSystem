@@ -229,8 +229,6 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
 int
 allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 {
-  cprintf("[allocuvm] in \n");
-  cprintf("[allocuvm] oldsz %x newsz %x\n",oldsz, newsz);
   char *mem;
   uint a;
 
@@ -344,8 +342,6 @@ copyuvm(pde_t *pgdir, uint sz)
     if(!(*pte & PTE_P)){
       continue;
     }
-    cprintf("[copyuvm] i %x\n",i);
-
     // PTE_ADDR 페이지 테이블 엔트리에서 물리 주소 부분
     // PTE_FLAGS flag 부분 추출
     pa = PTE_ADDR(*pte);
@@ -360,8 +356,6 @@ copyuvm(pde_t *pgdir, uint sz)
     if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0)
       goto bad;
   }  
-
-  cprintf("[copyuvm] complete\n");
   return d;
 
 bad:

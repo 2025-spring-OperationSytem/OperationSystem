@@ -86,21 +86,21 @@ trap(struct trapframe *tf)
   
     // page fault 발생 시 이 블록 실행
   case T_PGFLT:
-    cprintf("[PAGE FAULT IN]\n");
+    if(myproc()->killed)
+      exit();
     pde_t* pgdir;
     uint va;
     struct proc* p;
     char *mem;
+    p = myproc();
     // va = 페이지 폴트가 난 가상 주소의 페이지 시작 주소
     va = PGROUNDDOWN(rcr2());
-    cprintf("[PAGE FAULT] va %x \n",va);
-
-    p = myproc();
+    
     pgdir = p->pgdir;
 
     // 새 페이지를 할당할 물리 주소 할당
     if ((mem = kalloc()) == 0)
-      panic("Out of memory");
+      kill(p->pid);
     
     memset(mem, 0, PGSIZE);
 

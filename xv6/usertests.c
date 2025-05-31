@@ -1433,6 +1433,7 @@ sbrktest(void)
     *b = 1;
     a = b + 1;
   }
+  printf(stdout, "-----------------\n");
   pid = fork();
   if(pid < 0){
     printf(stdout, "sbrk test fork failed\n");

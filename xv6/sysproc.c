@@ -66,12 +66,28 @@ sys_sbrk(void)
 {
   int addr;
   int n;
-
+  struct proc* p = myproc();
   if(argint(0, &n) < 0)
     return -1;
-  addr = myproc()->sz;
-  if(growproc(n) < 0)
-    return -1;
+  // addr = 메모리를 늘리기 전 주소
+  addr = p->sz;
+  // 메모리를 할당할 때는 lazy allocation을 위해 sz만 올림
+  if (n > 0)
+  { 
+    if ((p->sz + n) >= KERNBASE){
+      kill(p->pid);
+      return -1;
+    }
+    else
+      p->sz += n;
+  }
+  // 메모리 할당을 해제할 때는 바로 해제
+  else if (n<0)
+  {
+    if(growproc(n) < 0)
+      return -1;
+  }
+  
   return addr;
 }
 

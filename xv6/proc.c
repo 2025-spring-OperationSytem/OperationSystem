@@ -78,7 +78,6 @@ allocproc(void)
 {
   struct proc *p;
   char *sp;
-  cprintf("[allocproc] in\n");
   acquire(&ptable.lock);
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
@@ -165,7 +164,6 @@ userinit(void)
 int
 growproc(int n)
 {
-  cprintf("[growproc] in\n");
   uint sz;
   struct proc *curproc = myproc();
 
@@ -178,7 +176,6 @@ growproc(int n)
       return -1;
   }
   curproc->sz = sz;
-  cprintf("[growproc] sz %x\n",sz);
   switchuvm(curproc);
   return 0;
 }
@@ -197,7 +194,6 @@ fork(void)
   if((np = allocproc()) == 0){
     return -1;
   } 
-  cprintf("[fork] curproc->sz %x\n",curproc->sz);
   // Copy process state from proc.
   if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
     kfree(np->kstack);
@@ -225,7 +221,6 @@ fork(void)
   np->state = RUNNABLE;
 
   release(&ptable.lock);
-  cprintf("[FORK] end\n");
   return pid;
 }
 
