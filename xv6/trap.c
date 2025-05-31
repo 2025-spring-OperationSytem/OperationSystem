@@ -92,15 +92,28 @@ trap(struct trapframe *tf)
     uint va;
     struct proc* p;
     char *mem;
+    uint sp;
     p = myproc();
     // va = 페이지 폴트가 난 가상 주소의 페이지 시작 주소
     va = PGROUNDDOWN(rcr2());
-    
     pgdir = p->pgdir;
+    sp = p->tf->esp;
 
-    // 새 페이지를 할당할 물리 주소 할당
-    if ((mem = kalloc()) == 0)
+    // sz+PGSIZE보다 크면 비정상적인 힙 영역 접근
+    // sp-PGSIZE보다 작으면 비정상적인 스택 접근
+    if (va > p->sz + PGSIZE && va < sp - PGSIZE){
+      cprintf("invaild access\n");
       kill(p->pid);
+    }
+    // 스택을 늘릴 때 sz보다 작아지면 메모리가 꽉 찬 것이다.
+    // 힙을 늘리는 경우는 sbrk에서 처리
+    // if ((sp = sp - PGSIZE) <= p->sz)
+    //   kill(p->pid);
+    // 새 페이지를 할당할 물리 주소 할당
+    if ((mem = kalloc()) == 0){
+      cprintf("out of memory\n");
+      kill(p->pid);
+    }
     
     memset(mem, 0, PGSIZE);
 

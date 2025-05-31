@@ -74,12 +74,17 @@ sys_sbrk(void)
   // 메모리를 할당할 때는 lazy allocation을 위해 sz만 올림
   if (n > 0)
   { 
-    if ((p->sz + n) >= KERNBASE){
+    if ((p->sz + n) >= p->tf->esp){
       kill(p->pid);
       return -1;
     }
-    else
-      p->sz += n;
+    else{
+      uint oldsz = PGROUNDUP(p->sz);
+      uint newsz = p->sz;
+      for(; oldsz < newsz; oldsz += PGSIZE){
+        mappages(pgdir, (char*)oldsz, PGSIZE, V2P(oldsz), PTE_W|PTE_U);
+      }
+    }
   }
   // 메모리 할당을 해제할 때는 바로 해제
   else if (n<0)

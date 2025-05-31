@@ -63,7 +63,8 @@ exec(char *path, char **argv)
   // Allocate two pages at the next page boundary.
   // Make the first inaccessible.  Use the second as the user stack.
   // sz를 커널 베이스로 이동 페이지를 할당해야 하기 때문에 그 크기만큼 빼줌
-  // 2*PGSIZE로 하면 페이지의 끝 주소가 커널 베이스가 되기 때문에 한단계 더 내린다.
+  // 2*PGSIZE로 하면 페이지의 끝 주소가 커널 베이스가 되기 때문에 한 단계 더 내린다.
+  // Pagefault가 발생했을 때 스택의 바로 아래인지를 판단하기 위해 gaurd page도 할당한다.
   sz = PGROUNDDOWN(KERNBASE - 2*PGSIZE);
   // 커널 베이스에서 PGSIZE만큼 할당
   if((sz = allocuvm(pgdir, sz, sz + PGSIZE)) == 0)

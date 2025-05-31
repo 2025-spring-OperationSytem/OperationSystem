@@ -1433,7 +1433,6 @@ sbrktest(void)
     *b = 1;
     a = b + 1;
   }
-  printf(stdout, "-----------------\n");
   pid = fork();
   if(pid < 0){
     printf(stdout, "sbrk test fork failed\n");
@@ -1448,7 +1447,6 @@ sbrktest(void)
   if(pid == 0)
     exit();
   wait();
-
   // can one grow address space to something big?
 #define BIG (100*1024*1024)
   a = sbrk(0);
@@ -1474,6 +1472,7 @@ sbrktest(void)
     exit();
   }
 
+  printf(stdout, "can re-allocate?\n");
   // can one re-allocate that page?
   a = sbrk(0);
   c = sbrk(4096);
@@ -1486,14 +1485,16 @@ sbrktest(void)
     printf(stdout, "sbrk de-allocation didn't really deallocate\n");
     exit();
   }
-
+  
   a = sbrk(0);
+  printf(stdout, "[re-allocate] a %x oldbrk %x \n",a,oldbrk);
   c = sbrk(-(sbrk(0) - oldbrk));
   if(c != a){
     printf(stdout, "sbrk downsize failed, a %x c %x\n", a, c);
     exit();
   }
 
+  printf(stdout, "can read kernel's memory?\n");
   // can we read the kernel's memory?
   for(a = (char*)(KERNBASE); a < (char*) (KERNBASE+2000000); a += 50000){
     ppid = getpid();
