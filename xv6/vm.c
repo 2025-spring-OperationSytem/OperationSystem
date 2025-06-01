@@ -35,7 +35,7 @@ seginit(void)
 // Return the address of the PTE in page table pgdir
 // that corresponds to virtual address va.  If alloc!=0,
 // create any required page table pages.
-static pte_t *
+/*static 전역에서 사용해야 함*/ pte_t *
 walkpgdir(pde_t *pgdir, const void *va, int alloc)
 {
   pde_t *pde;
@@ -60,7 +60,7 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
 // Create PTEs for virtual addresses starting at va that refer to
 // physical addresses starting at pa. va and size might not
 // be page-aligned.
-static int
+/*static 전역에서 사용해야 함*/ int
 mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 {
   char *a, *last;
@@ -327,22 +327,35 @@ copyuvm(pde_t *pgdir, uint sz)
   pte_t *pte;
   uint pa, i, flags;
   char *mem;
-
+  
   if((d = setupkvm()) == 0)
     return 0;
-  for(i = 0; i < sz; i += PGSIZE){
+    // 스택을 힙 영역으로 옮겼으니 힙 영역까지의 페이지 복사
+    // text, data 영역 0xb98까지 stack 영역 0xb98+ 2*PGSIZE까지
+    // heap 영역 stack영역 위부터 kernbase까지
+  for(i = 0; i < KERNBASE; i += PGSIZE){
+    
+    // 스택을 힙 영역의 맨 위에 할당했기 때문에 kernbase까지 복사를 해야하는데
+    // 할당되지 않은 페이지, 유효하지 않은 페이지는 복사하지 않고 지나감
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
-      panic("copyuvm: pte should exist");
-    if(!(*pte & PTE_P))
-      panic("copyuvm: page not present");
+      continue;
+    if(!(*pte & PTE_P)){
+      continue;
+    }
+    // PTE_ADDR 페이지 테이블 엔트리에서 물리 주소 부분
+    // PTE_FLAGS flag 부분 추출
     pa = PTE_ADDR(*pte);
     flags = PTE_FLAGS(*pte);
+
+    // 페이지를 복사할 물리 주소 할당
     if((mem = kalloc()) == 0)
       goto bad;
+    // 현재 페이지의 물리 주소인 pa를  mem에 복사
     memmove(mem, (char*)P2V(pa), PGSIZE);
+    // 현재 가상주소에 복사받은 mem을 매핑
     if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0)
       goto bad;
-  }
+  }  
   return d;
 
 bad:
@@ -397,4 +410,3 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 // Blank page.
 //PAGEBREAK!
 // Blank page.
-

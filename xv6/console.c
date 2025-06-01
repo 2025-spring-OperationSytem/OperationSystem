@@ -91,6 +91,10 @@ cprintf(char *fmt, ...)
       for(; *s; s++)
         consputc(*s);
       break;
+    // %c 출력
+    case 'c':
+      consputc(*argp++);
+      break;
     case '%':
       consputc('%');
       break;
@@ -333,4 +337,3 @@ consoleinit(void)
 
   ioapicenable(IRQ_KBD, 0);
 }
-

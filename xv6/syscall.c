@@ -17,9 +17,9 @@
 int
 fetchint(uint addr, int *ip)
 {
-  struct proc *curproc = myproc();
-
-  if(addr >= curproc->sz || addr+4 > curproc->sz)
+  // sz가 stack영역은 포함하지 않게 설정되었기 때문에 kernbase로 변경
+  // fetchstr, argptr도 동일
+  if(addr >= KERNBASE || addr+4 >= KERNBASE)
     return -1;
   *ip = *(int*)(addr);
   return 0;
@@ -32,12 +32,11 @@ int
 fetchstr(uint addr, char **pp)
 {
   char *s, *ep;
-  struct proc *curproc = myproc();
 
-  if(addr >= curproc->sz)
+  if(addr >= KERNBASE)
     return -1;
   *pp = (char*)addr;
-  ep = (char*)curproc->sz;
+  ep = (char*)(KERNBASE-1);
   for(s = *pp; s < ep; s++){
     if(*s == 0)
       return s - *pp;
@@ -59,11 +58,10 @@ int
 argptr(int n, char **pp, int size)
 {
   int i;
-  struct proc *curproc = myproc();
  
   if(argint(n, &i) < 0)
     return -1;
-  if(size < 0 || (uint)i >= curproc->sz || (uint)i+size > curproc->sz)
+  if(size < 0 || (uint)i >= KERNBASE || (uint)i+size > KERNBASE)
     return -1;
   *pp = (char*)i;
   return 0;
@@ -103,7 +101,11 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
+// sysproc.c에 선언되어있는 함수 호출
 extern int sys_uthread_init(void);
+// 페이지 테이블 출력 함수
+extern int sys_printpt(void);
+// 아래에서 system call로 호출하는 함수들을 선언한다.
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -128,6 +130,7 @@ static int (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_uthread_init] sys_uthread_init,
+[SYS_printpt] sys_printpt,
 };
 
 void

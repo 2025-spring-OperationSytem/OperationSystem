@@ -62,11 +62,22 @@ exec(char *path, char **argv)
 
   // Allocate two pages at the next page boundary.
   // Make the first inaccessible.  Use the second as the user stack.
-  sz = PGROUNDUP(sz);
-  if((sz = allocuvm(pgdir, sz, sz + 2*PGSIZE)) == 0)
+  // sz를 커널 베이스로 이동 페이지를 할당해야 하기 때문에 그 크기만큼 빼줌
+  // 2*PGSIZE로 하면 페이지의 끝 주소가 커널 베이스가 되기 때문에 한 단계 더 내린다.
+  // Pagefault가 발생했을 때 스택의 바로 아래인지를 판단하기 위해 gaurd page도 할당한다.
+  cprintf("[exec] sz %x curproc pid %d\n",sz,curproc->pid);
+  sz = PGROUNDDOWN(KERNBASE - 2*PGSIZE);
+  // 커널 베이스에서 PGSIZE만큼 할당
+  if((sz = allocuvm(pgdir, sz, sz + PGSIZE)) == 0)
     goto bad;
-  clearpteu(pgdir, (char*)(sz - 2*PGSIZE));
+  // 스택 포인터를 sz로
   sp = sz;
+  // 0xb98은 text, data영역의 윗 부분
+  // sz는 사용 중인 유저 공간을 나타내주는데 스택을 kernbase로 옮겨서
+  // 스택 외의 코드까지만 sz로 변경
+  sz = PGROUNDUP(0xb98) /*+ 2*PGSIZE*/;
+  cprintf("[exec] sz %x curproc pid %d\n",sz,curproc->pid);
+
 
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
@@ -96,14 +107,16 @@ exec(char *path, char **argv)
   // Commit to the user image.
   oldpgdir = curproc->pgdir;
   curproc->pgdir = pgdir;
-  curproc->sz = sz;
   curproc->tf->eip = elf.entry;  // main
+  curproc->sz = sz;
   curproc->tf->esp = sp;
+  cprintf("[exec] eip %x\n",curproc->tf->eip);
   switchuvm(curproc);
   freevm(oldpgdir);
   return 0;
 
  bad:
+  cprintf("bad \n");
   if(pgdir)
     freevm(pgdir);
   if(ip){

@@ -56,6 +56,8 @@ trap(struct trapframe *tf)
       release(&tickslock);
     }
     lapiceoi();
+
+
     break;
   case T_IRQ0 + IRQ_IDE:
     ideintr();
@@ -81,6 +83,40 @@ trap(struct trapframe *tf)
             cpuid(), tf->cs, tf->eip);
     lapiceoi();
     break;
+  
+    // page fault 발생 시 이 블록 실행
+  case T_PGFLT:
+    if(myproc()->killed)
+      exit();
+    pde_t* pgdir;
+    uint va;
+    struct proc* p;
+    uint sp;
+    p = myproc();
+    // va = 페이지 폴트가 난 가상 주소의 페이지 시작 주소
+    va = PGROUNDDOWN(rcr2());
+    pgdir = p->pgdir;
+    sp = p->tf->esp;
+
+    // sz+PGSIZE보다 크면 비정상적인 힙 영역 접근
+    // sp-PGSIZE보다 작으면 비정상적인 스택 접근
+    if (va > p->sz + PGSIZE && va < sp - PGSIZE){
+      cprintf("invaild access va %x sz %x sp %x eip %x\n",rcr2(),p->sz,sp, p->tf->eip);
+      kill(p->pid);
+    }
+
+    if (va <= p->sz + PGSIZE){
+      allocuvm(pgdir, va, va + PGSIZE);
+    }
+    else if (va >= sp - PGSIZE)
+    {
+      allocuvm(pgdir, va, va + PGSIZE);
+    }
+
+    // flush
+    switchuvm(p);
+    break;
+
 
   //PAGEBREAK: 13
   default:

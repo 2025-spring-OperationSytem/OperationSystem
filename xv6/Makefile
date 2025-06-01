@@ -210,7 +210,10 @@ UPROGS=\
 	_uthread1\
 	_uthread2\
 	_uthread3\
-	_uthread4
+	_uthread4\
+	_memtest\
+	_recurse\
+	_lazytest
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
