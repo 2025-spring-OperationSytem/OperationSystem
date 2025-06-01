@@ -91,7 +91,6 @@ trap(struct trapframe *tf)
     pde_t* pgdir;
     uint va;
     struct proc* p;
-    char *mem;
     uint sp;
     p = myproc();
     // va = 페이지 폴트가 난 가상 주소의 페이지 시작 주소
@@ -102,24 +101,17 @@ trap(struct trapframe *tf)
     // sz+PGSIZE보다 크면 비정상적인 힙 영역 접근
     // sp-PGSIZE보다 작으면 비정상적인 스택 접근
     if (va > p->sz + PGSIZE && va < sp - PGSIZE){
-      cprintf("invaild access\n");
+      cprintf("invaild access va %x sz %x sp %x eip %x\n",rcr2(),p->sz,sp, p->tf->eip);
       kill(p->pid);
     }
-    // 스택을 늘릴 때 sz보다 작아지면 메모리가 꽉 찬 것이다.
-    // 힙을 늘리는 경우는 sbrk에서 처리
-    // if ((sp = sp - PGSIZE) <= p->sz)
-    //   kill(p->pid);
-    // 새 페이지를 할당할 물리 주소 할당
-    if ((mem = kalloc()) == 0){
-      cprintf("out of memory\n");
-      kill(p->pid);
-    }
-    
-    memset(mem, 0, PGSIZE);
 
-    // va 페이지 테이블에 매핑
-    // 페이지 테이블 관련 처리는 mappages 안에서 자동으로 처리해줌
-    mappages(pgdir, (void*)va, PGSIZE, V2P(mem), PTE_W|PTE_U|PTE_P);
+    if (va <= p->sz + PGSIZE){
+      allocuvm(pgdir, va, va + PGSIZE);
+    }
+    else if (va >= sp - PGSIZE)
+    {
+      allocuvm(pgdir, va, va + PGSIZE);
+    }
 
     // flush
     switchuvm(p);

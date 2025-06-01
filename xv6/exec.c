@@ -74,7 +74,11 @@ exec(char *path, char **argv)
   // 0xb98은 text, data영역의 윗 부분
   // sz는 사용 중인 유저 공간을 나타내주는데 스택을 kernbase로 옮겨서
   // 스택 외의 코드까지만 sz로 변경
-  sz = PGROUNDUP(0xb98)+1;
+  if(curproc->pid == 1)
+    sz = PGROUNDUP(0xb98) + 2*PGSIZE;
+  else 
+    sz = PGROUNDUP(0xb98) + 3*PGSIZE;
+  cprintf("[exec] sz %x curproc pid %d\n",sz,curproc->pid);
 
 
   // Push argument strings, prepare rest of stack in ustack.
@@ -105,9 +109,10 @@ exec(char *path, char **argv)
   // Commit to the user image.
   oldpgdir = curproc->pgdir;
   curproc->pgdir = pgdir;
-  curproc->sz = sz;
   curproc->tf->eip = elf.entry;  // main
+  curproc->sz = sz;
   curproc->tf->esp = sp;
+  cprintf("[exec] eip %x\n",curproc->tf->eip);
   switchuvm(curproc);
   freevm(oldpgdir);
   return 0;

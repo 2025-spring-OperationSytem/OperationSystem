@@ -71,28 +71,35 @@ sys_sbrk(void)
     return -1;
   // addr = 메모리를 늘리기 전 주소
   addr = p->sz;
-  // 메모리를 할당할 때는 lazy allocation을 위해 sz만 올림
   if (n > 0)
   { 
-    if ((p->sz + n) >= p->tf->esp){
+    if (PGROUNDUP(p->sz + n) >= p->tf->esp){
       kill(p->pid);
       return -1;
     }
     else{
       uint oldsz = PGROUNDUP(p->sz);
-      uint newsz = p->sz;
+      uint newsz = p->sz + n;
+      p->sz = newsz;
       for(; oldsz < newsz; oldsz += PGSIZE){
-        mappages(pgdir, (char*)oldsz, PGSIZE, V2P(oldsz), PTE_W|PTE_U);
+      pte_t *pte = walkpgdir(p->pgdir, (void*)oldsz, 1);
+      if (pte == 0)
+        return -1;
+      // cprintf("pgtab %x\n",*pte);
       }
+      switchuvm(p);
     }
   }
   // 메모리 할당을 해제할 때는 바로 해제
   else if (n<0)
   {
+    cprintf("[sbrk] sz %x \n",p->sz);
     if(growproc(n) < 0)
       return -1;
+    cprintf("[sbrk] sz %x \n",p->sz);
+    cprintf("[sbrk] addr %x \n", addr);
+    cprintf("[sbrk] esp %x eip %x \n",p->tf->esp, p->tf->eip);
   }
-  
   return addr;
 }
 

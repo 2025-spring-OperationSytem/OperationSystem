@@ -1489,6 +1489,7 @@ sbrktest(void)
   a = sbrk(0);
   printf(stdout, "[re-allocate] a %x oldbrk %x \n",a,oldbrk);
   c = sbrk(-(sbrk(0) - oldbrk));
+  printf(stdout, " --------- \n");
   if(c != a){
     printf(stdout, "sbrk downsize failed, a %x c %x\n", a, c);
     exit();
