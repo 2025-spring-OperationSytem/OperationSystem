@@ -88,6 +88,7 @@ trap(struct trapframe *tf)
   case T_PGFLT:
     if(myproc()->killed)
       exit();
+      
     pde_t* pgdir;
     uint va;
     struct proc* p;
@@ -100,16 +101,19 @@ trap(struct trapframe *tf)
 
     // sz+PGSIZE보다 크면 비정상적인 힙 영역 접근
     // sp-PGSIZE보다 작으면 비정상적인 스택 접근
-    if (va > p->sz + PGSIZE && va < sp - PGSIZE){
-      cprintf("invaild access va %x sz %x sp %x eip %x\n",rcr2(),p->sz,sp, p->tf->eip);
+    if (va >= p->sz && va < sp - PGSIZE) {
+      cprintf("invalid access: va=0x%x sz=0x%x sp=0x%x eip=0x%x\n", va, p->sz, sp, p->tf->eip);
       kill(p->pid);
+      break;
     }
 
-    if (va <= p->sz + PGSIZE){
+    //정상적인 힙 확장
+    if (va < p->sz + PGSIZE) {
       allocuvm(pgdir, va, va + PGSIZE);
     }
-    else if (va >= sp - PGSIZE)
-    {
+
+    //정상적인 스택 확장
+    else if (va >= sp - PGSIZE) {
       allocuvm(pgdir, va, va + PGSIZE);
     }
 
